@@ -1,0 +1,338 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
+import 'package:manycards/gen/assets.gen.dart';
+import 'package:manycards/view/constants/text/text.dart';
+import 'package:manycards/view/constants/widgets/currency_bottom_sheet.dart';
+import 'package:manycards/view/constants/widgets/button.dart';
+import 'package:manycards/view/constants/widgets/transaction_row_widget.dart';
+import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
+import '../../controller/currency_controller.dart';
+
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+  Future<void> _handleRefresh(
+    BuildContext context,
+    CurrencyController controller,
+  ) async {
+    try {
+      await controller.refreshBalances();
+    } catch (e) {
+      // Handle error if needed
+      debugPrint('Refresh error: $e');
+    }
+  }
+
+  void showCurrencyBottomSheet(
+    BuildContext context,
+    CurrencyController controller,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF121212),
+      isScrollControlled: false,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(30),
+          topRight: Radius.circular(30),
+        ),
+      ),
+      builder: (_) => CurrencyBottomSheet(controller: controller),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Provider.of<CurrencyController>(context);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF121212),
+      body: SafeArea(
+        child: LiquidPullToRefresh(
+          onRefresh: () => _handleRefresh(context, controller),
+          color: Colors.green,
+          backgroundColor: const Color(0xFF2C2C2C),
+          height: 50.h,
+          animSpeedFactor: 2,
+          showChildOpacityTransition: false,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.w),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: 22.h),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      CustomTextWidget(
+                        text: 'Welcome, Ini',
+                        fontSize: 20.sp,
+                        color: const Color(0xFFEAEAEA),
+                        fontWeight: FontWeight.bold,
+                      ),
+                      Container(
+                        height: 45.h,
+                        width: 45.w,
+                        padding: EdgeInsets.all(12.sp),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2C2C2C),
+                          borderRadius: BorderRadius.circular(50.r),
+                        ),
+                        child: Assets.svg.notification.svg(),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 36.h),
+                  Row(
+                    children: [
+                      CustomTextWidget(
+                        text: 'Your total account balance',
+                        fontSize: 15.sp,
+                        color: const Color(0xFFEAEAEA),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      SizedBox(width: 8.w),
+                      GestureDetector(
+                        onTap: () {
+                          controller.toggleBalanceVisibility();
+                        },
+                        child: Icon(
+                          controller.isBalanceVisible
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          size: 20.sp,
+                          color: const Color(0xFFEAEAEA),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8.h),
+                  Row(
+                    children: [
+                      controller.selectedCurrency.flag,
+                      SizedBox(width: 8.w),
+                      CustomTextWidget(
+                        text: controller.selectedCurrency.code,
+                        fontSize: 16.sp,
+                        color: const Color(0xFFEAEAEA),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8.h),
+                  GestureDetector(
+                    onTap: () => showCurrencyBottomSheet(context, controller),
+                    child: Row(
+                      children: [
+                        controller.isLoading || controller.isRefreshing
+                            ? Shimmer.fromColors(
+                              baseColor: Colors.grey[800]!,
+                              highlightColor: Colors.grey[700]!,
+                              child: Container(
+                                width: 200.w,
+                                height: 35.h,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                            )
+                            : Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                controller.isBalanceVisible
+                                    ? CustomTextWidget(
+                                      text:
+                                          controller
+                                              .selectedCurrency
+                                              .formattedBalance,
+                                      fontSize: 34.sp,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFFEAEAEA),
+                                    )
+                                    : CustomTextWidget(
+                                      text: '* * * * * *',
+                                      fontSize: 40.sp,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFFEAEAEA),
+                                    ),
+                              ],
+                            ),
+
+                        Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 25.sp,
+                          color: const Color(0xFFEAEAEA),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 35.h),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      //Top Up
+                      QuickActionButton(
+                        onTap: () {
+                          // your tap logic here
+                        },
+                        icon: Padding(
+                          padding: EdgeInsets.all(5.sp),
+                          child: Assets.images.plus.image(
+                            color: const Color(0xFFC4C4C4),
+                          ),
+                        ),
+                        label: 'Top Up',
+                      ),
+
+                      //Transfer
+                      QuickActionButton(
+                        onTap: () {
+                          // your tap logic here
+                        },
+                        icon: Padding(
+                          padding: EdgeInsets.all(2.sp),
+                          child: Assets.images.transfer.image(
+                            color: const Color(0xFFC4C4C4),
+                          ),
+                        ),
+                        label: 'Transfer',
+                      ),
+
+                      //create card
+                      QuickActionButton(
+                        onTap: () {
+                          // your tap logic here
+                        },
+                        icon: Padding(
+                          padding: EdgeInsets.all(1.sp),
+                          child: Assets.images.createCard.image(
+                            color: const Color(0xFFC4C4C4),
+                          ),
+                        ),
+                        label: 'Create Card',
+                      ),
+
+                      //withdraw
+                      QuickActionButton(
+                        onTap: () {},
+                        icon: Assets.images.withdraw.image(
+                          color: const Color(0xFFC4C4C4),
+                        ),
+
+                        label: 'Withdraw',
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 30.h),
+
+                  // Transaction History
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      CustomTextWidget(
+                        text: 'Recent Transactions',
+                        fontSize: 18.sp,
+                        color: const Color(0xFFEAEAEA),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      GestureDetector(
+                        onTap: () {},
+                        child: CustomTextWidget(
+                          text: 'See all',
+                          fontSize: 14.sp,
+                          color: const Color(0xFF949494),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 25.h),
+                  TransactionRowWidget(
+                    leadingIcon: Icon(
+                      Icons.attach_money,
+                      color: Colors.white,
+                      size: 20.sp,
+                    ),
+                    title: 'Card Funding',
+                    subtitle: 'Feb 3 at 5:17 PM',
+                    description: 'You funded your USD Card',
+                    amount:
+                        controller.isBalanceVisible
+                            ? '+\$500.00'
+                            : '* * * * * *',
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                    child: Divider(
+                      thickness: 1.h,
+                      color: const Color(0xFF2C2C2C),
+                    ),
+                  ),
+                  TransactionRowWidget(
+                    leadingIcon: Icon(
+                      Icons.attach_money,
+                      color: Colors.white,
+                      size: 20.sp,
+                    ),
+                    title: 'Card Funding',
+                    subtitle: 'Feb 3 at 5:17 PM',
+                    description: 'You funded your USD Card',
+                    amount:
+                        controller.isBalanceVisible
+                            ? '+\$500.00'
+                            : '* * * * * *',
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                    child: Divider(
+                      thickness: 1.h,
+                      color: const Color(0xFF2C2C2C),
+                    ),
+                  ),
+                  TransactionRowWidget(
+                    leadingIcon: Icon(
+                      Icons.attach_money,
+                      color: Colors.white,
+                      size: 20.sp,
+                    ),
+                    title: 'Card Funding',
+                    subtitle: 'Feb 3 at 5:17 PM',
+                    description: 'You funded your USD Card',
+                    amount:
+                        controller.isBalanceVisible
+                            ? '+\$500.00'
+                            : '* * * * * *',
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                    child: Divider(
+                      thickness: 1.h,
+                      color: const Color(0xFF2C2C2C),
+                    ),
+                  ),
+                  TransactionRowWidget(
+                    leadingIcon: Icon(
+                      Icons.attach_money,
+                      color: Colors.white,
+                      size: 20.sp,
+                    ),
+                    title: 'Card Funding',
+                    subtitle: 'Feb 3 at 5:17 PM',
+                    description: 'You funded your USD Card',
+                    amount:
+                        controller.isBalanceVisible
+                            ? '+\$500.00'
+                            : '* * * * * *',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
