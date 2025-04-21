@@ -31,7 +31,7 @@ class CurrencyCard extends StatelessWidget {
     return Container(
       // height: 186,
       // width: 327,
-      padding: EdgeInsets.symmetric(horizontal: 25.w, vertical: 25.h),
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(20.r),
@@ -47,7 +47,7 @@ class CurrencyCard extends StatelessWidget {
               cardTypeWidget ?? _defaultCardTypeWidget(),
             ],
           ),
-          SizedBox(height: 20.h),
+          SizedBox(height: 15.h),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

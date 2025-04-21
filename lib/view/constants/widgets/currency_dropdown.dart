@@ -38,6 +38,14 @@ class _CurrencyDropdownState extends State<CurrencyDropdown> {
         widget.customCurrencies ??
         [
           CurrencyOption(
+            value: 'NGN',
+            flagAsset: Assets.images.nigerianFlag.image(
+              height: 20.h,
+              width: 20.w,
+            ),
+            label: 'NGN',
+          ),
+          CurrencyOption(
             value: 'USD',
             flagAsset: Assets.images.usFlag.image(height: 20.h, width: 20.w),
             label: 'USD',
@@ -46,14 +54,6 @@ class _CurrencyDropdownState extends State<CurrencyDropdown> {
             value: 'GBP',
             flagAsset: Assets.images.ukFlag.image(height: 20.h, width: 20.w),
             label: 'GBP',
-          ),
-          CurrencyOption(
-            value: 'NGN',
-            flagAsset: Assets.images.nigerianFlag.image(
-              height: 20.h,
-              width: 20.w,
-            ),
-            label: 'NGN',
           ),
         ];
 

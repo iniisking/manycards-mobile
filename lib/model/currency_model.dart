@@ -29,19 +29,20 @@ class CurrencyModel {
   static List<CurrencyModel> getAvailableCurrencies() {
     return [
       CurrencyModel(
-        code: 'USD',
-        name: 'United States Dollar',
-        locale: 'en_US',
-        symbol: '\$',
-        flag: Assets.images.usFlag.image(height: 25, width: 25),
-      ),
-      CurrencyModel(
         code: 'NGN',
         name: 'Nigerian Naira',
         locale: 'en_NG',
         symbol: '₦',
         flag: Assets.images.nigerianFlag.image(height: 25, width: 25),
       ),
+      CurrencyModel(
+        code: 'USD',
+        name: 'United States Dollar',
+        locale: 'en_US',
+        symbol: '\$',
+        flag: Assets.images.usFlag.image(height: 25, width: 25),
+      ),
+
       CurrencyModel(
         code: 'GBP',
         name: 'Great British Pound',

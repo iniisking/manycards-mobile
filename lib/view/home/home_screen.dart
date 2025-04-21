@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import 'package:manycards/gen/assets.gen.dart';
 import 'package:manycards/view/constants/text/text.dart';
+import 'package:manycards/view/constants/widgets/colors.dart';
 import 'package:manycards/view/constants/widgets/currency_bottom_sheet.dart';
 import 'package:manycards/view/constants/widgets/button.dart';
 import 'package:manycards/view/constants/widgets/transaction_row_widget.dart';
@@ -47,14 +48,14 @@ class HomeScreen extends StatelessWidget {
     final controller = Provider.of<CurrencyController>(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: backgroundColor,
       body: SafeArea(
         child: LiquidPullToRefresh(
           onRefresh: () => _handleRefresh(context, controller),
-          color: Colors.green,
-          backgroundColor: const Color(0xFF2C2C2C),
+          color: actionButtonColor,
+          backgroundColor: fisrtHeaderTextColor,
           height: 50.h,
-          animSpeedFactor: 2,
+          animSpeedFactor: 3,
           showChildOpacityTransition: false,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -70,7 +71,7 @@ class HomeScreen extends StatelessWidget {
                       CustomTextWidget(
                         text: 'Welcome, Ini',
                         fontSize: 20.sp,
-                        color: const Color(0xFFEAEAEA),
+                        color: fisrtHeaderTextColor,
                         fontWeight: FontWeight.bold,
                       ),
                       Container(
@@ -78,7 +79,7 @@ class HomeScreen extends StatelessWidget {
                         width: 45.w,
                         padding: EdgeInsets.all(12.sp),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF2C2C2C),
+                          color: actionButtonColor,
                           borderRadius: BorderRadius.circular(50.r),
                         ),
                         child: Assets.svg.notification.svg(),
@@ -91,7 +92,7 @@ class HomeScreen extends StatelessWidget {
                       CustomTextWidget(
                         text: 'Your total account balance',
                         fontSize: 15.sp,
-                        color: const Color(0xFFEAEAEA),
+                        color: fisrtHeaderTextColor,
                         fontWeight: FontWeight.w500,
                       ),
                       SizedBox(width: 8.w),
@@ -104,7 +105,7 @@ class HomeScreen extends StatelessWidget {
                               ? Icons.visibility_outlined
                               : Icons.visibility_off_outlined,
                           size: 20.sp,
-                          color: const Color(0xFFEAEAEA),
+                          color: fisrtHeaderTextColor,
                         ),
                       ),
                     ],
@@ -117,7 +118,7 @@ class HomeScreen extends StatelessWidget {
                       CustomTextWidget(
                         text: controller.selectedCurrency.code,
                         fontSize: 16.sp,
-                        color: const Color(0xFFEAEAEA),
+                        color: fisrtHeaderTextColor,
                       ),
                     ],
                   ),
@@ -150,13 +151,13 @@ class HomeScreen extends StatelessWidget {
                                               .formattedBalance,
                                       fontSize: 34.sp,
                                       fontWeight: FontWeight.bold,
-                                      color: const Color(0xFFEAEAEA),
+                                      color: fisrtHeaderTextColor,
                                     )
                                     : CustomTextWidget(
                                       text: '* * * * * *',
                                       fontSize: 40.sp,
                                       fontWeight: FontWeight.bold,
-                                      color: const Color(0xFFEAEAEA),
+                                      color: fisrtHeaderTextColor,
                                     ),
                               ],
                             ),
@@ -164,7 +165,7 @@ class HomeScreen extends StatelessWidget {
                         Icon(
                           Icons.keyboard_arrow_down_rounded,
                           size: 25.sp,
-                          color: const Color(0xFFEAEAEA),
+                          color: fisrtHeaderTextColor,
                         ),
                       ],
                     ),
@@ -181,7 +182,7 @@ class HomeScreen extends StatelessWidget {
                         icon: Padding(
                           padding: EdgeInsets.all(5.sp),
                           child: Assets.images.plus.image(
-                            color: const Color(0xFFC4C4C4),
+                            color: actionButtonIconColor,
                           ),
                         ),
                         label: 'Top Up',
@@ -195,7 +196,7 @@ class HomeScreen extends StatelessWidget {
                         icon: Padding(
                           padding: EdgeInsets.all(2.sp),
                           child: Assets.images.transfer.image(
-                            color: const Color(0xFFC4C4C4),
+                            color: actionButtonIconColor,
                           ),
                         ),
                         label: 'Transfer',
@@ -209,7 +210,7 @@ class HomeScreen extends StatelessWidget {
                         icon: Padding(
                           padding: EdgeInsets.all(1.sp),
                           child: Assets.images.createCard.image(
-                            color: const Color(0xFFC4C4C4),
+                            color: actionButtonIconColor,
                           ),
                         ),
                         label: 'Create Card',
@@ -219,7 +220,7 @@ class HomeScreen extends StatelessWidget {
                       QuickActionButton(
                         onTap: () {},
                         icon: Assets.images.withdraw.image(
-                          color: const Color(0xFFC4C4C4),
+                          color: actionButtonIconColor,
                         ),
 
                         label: 'Withdraw',
@@ -235,7 +236,7 @@ class HomeScreen extends StatelessWidget {
                       CustomTextWidget(
                         text: 'Recent Transactions',
                         fontSize: 18.sp,
-                        color: const Color(0xFFEAEAEA),
+                        color: fisrtHeaderTextColor,
                         fontWeight: FontWeight.w500,
                       ),
                       GestureDetector(
@@ -243,7 +244,7 @@ class HomeScreen extends StatelessWidget {
                         child: CustomTextWidget(
                           text: 'See all',
                           fontSize: 14.sp,
-                          color: const Color(0xFF949494),
+                          color: secondHeadTextColor,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -253,7 +254,7 @@ class HomeScreen extends StatelessWidget {
                   TransactionRowWidget(
                     leadingIcon: Icon(
                       Icons.attach_money,
-                      color: Colors.white,
+                      color: fisrtHeaderTextColor,
                       size: 20.sp,
                     ),
                     title: 'Card Funding',
@@ -266,15 +267,12 @@ class HomeScreen extends StatelessWidget {
                   ),
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: 8.h),
-                    child: Divider(
-                      thickness: 1.h,
-                      color: const Color(0xFF2C2C2C),
-                    ),
+                    child: Divider(thickness: 1.h, color: actionButtonColor),
                   ),
                   TransactionRowWidget(
                     leadingIcon: Icon(
                       Icons.attach_money,
-                      color: Colors.white,
+                      color: fisrtHeaderTextColor,
                       size: 20.sp,
                     ),
                     title: 'Card Funding',
@@ -287,15 +285,12 @@ class HomeScreen extends StatelessWidget {
                   ),
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: 8.h),
-                    child: Divider(
-                      thickness: 1.h,
-                      color: const Color(0xFF2C2C2C),
-                    ),
+                    child: Divider(thickness: 1.h, color: actionButtonColor),
                   ),
                   TransactionRowWidget(
                     leadingIcon: Icon(
                       Icons.attach_money,
-                      color: Colors.white,
+                      color: fisrtHeaderTextColor,
                       size: 20.sp,
                     ),
                     title: 'Card Funding',
@@ -308,15 +303,12 @@ class HomeScreen extends StatelessWidget {
                   ),
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: 8.h),
-                    child: Divider(
-                      thickness: 1.h,
-                      color: const Color(0xFF2C2C2C),
-                    ),
+                    child: Divider(thickness: 1.h, color: actionButtonColor),
                   ),
                   TransactionRowWidget(
                     leadingIcon: Icon(
                       Icons.attach_money,
-                      color: Colors.white,
+                      color: fisrtHeaderTextColor,
                       size: 20.sp,
                     ),
                     title: 'Card Funding',

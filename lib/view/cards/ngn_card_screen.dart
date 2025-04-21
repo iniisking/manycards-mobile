@@ -5,6 +5,7 @@ import 'package:manycards/view/cards/sub_card.dart';
 import 'package:manycards/view/constants/text/text.dart';
 import 'package:manycards/view/constants/widgets/button.dart';
 import 'package:manycards/view/constants/widgets/cards.dart';
+import 'package:manycards/view/constants/widgets/colors.dart';
 import 'package:manycards/view/constants/widgets/currency_dropdown.dart';
 import 'package:manycards/view/constants/widgets/shimmers.dart';
 
@@ -15,7 +16,7 @@ class NgnCardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     String selectedCurrency = 'NGN';
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: backgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -29,7 +30,7 @@ class NgnCardScreen extends StatelessWidget {
                     CustomTextWidget(
                       text: 'My Cards',
                       fontSize: 18.sp,
-                      color: Color(0xFFEAEAEA),
+                      color: fisrtHeaderTextColor,
                       fontWeight: FontWeight.bold,
                     ),
                     CurrencyDropdown(
@@ -39,7 +40,7 @@ class NgnCardScreen extends StatelessWidget {
                         //   selectedCurrency = value;
                         // });
                       },
-                      backgroundColor: Color(0xFF232323),
+                      backgroundColor: textfieldBackgroundColor,
                     ),
                   ],
                 ),
