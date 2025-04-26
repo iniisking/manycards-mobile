@@ -21,6 +21,8 @@ dependencies:
   intl: ^0.20.2
   provider: ^6.1.4
   shimmer: ^3.0.0
+  flutter_swiper_view: ^1.1.8
+  dotted_border: ^2.1.0
 
 dev_dependencies:
   flutter_test:

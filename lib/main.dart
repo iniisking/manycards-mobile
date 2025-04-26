@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:manycards/view/bottom%20nav%20bar/main_screen.dart';
+import 'package:manycards/view/authentication/sign_up_screen.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:manycards/controller/currency_controller.dart'; // Import your controller
@@ -29,7 +29,7 @@ class MyApp extends StatelessWidget {
           ),
         );
       },
-      child: const MainScreen(), // Pass HomeScreen as child
+      child: const SignUpScreen(), // Pass HomeScreen as child
     );
   }
 }

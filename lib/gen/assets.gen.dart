@@ -89,6 +89,9 @@ class $AssetsImagesGen {
 class $AssetsSvgGen {
   const $AssetsSvgGen();
 
+  /// File path: assets/svg/Google.svg
+  SvgGenImage get google => const SvgGenImage('assets/svg/Google.svg');
+
   /// File path: assets/svg/back arrow.svg
   SvgGenImage get backArrow => const SvgGenImage('assets/svg/back arrow.svg');
 
@@ -107,6 +110,7 @@ class $AssetsSvgGen {
 
   /// List of all assets
   List<SvgGenImage> get values => [
+    google,
     backArrow,
     cardChip,
     downArrow,
