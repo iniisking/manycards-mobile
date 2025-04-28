@@ -23,6 +23,9 @@ dependencies:
   shimmer: ^3.0.0
   flutter_swiper_view: ^1.1.8
   dotted_border: ^2.1.0
+  firebase_core: ^3.13.0
+  firebase_auth: ^5.5.2
+  cloud_firestore: ^5.6.6
 
 dev_dependencies:
   flutter_test:

@@ -1,18 +1,146 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:manycards/view/authentication/login_screen.dart';
+import 'package:manycards/view/authentication/verify_email.dart';
 import 'package:manycards/view/constants/text/text.dart';
 import 'package:manycards/view/constants/widgets/button.dart';
 import 'package:manycards/view/constants/widgets/colors.dart';
 import 'package:manycards/view/constants/widgets/textfield.dart';
+import 'package:provider/provider.dart';
+import 'package:manycards/controller/auth_controller.dart';
 
-class SignUpScreen extends StatelessWidget {
+class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
 
   @override
+  State<SignUpScreen> createState() => _SignUpScreenState();
+}
+
+class _SignUpScreenState extends State<SignUpScreen> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController firstNameController = TextEditingController();
+  final TextEditingController lastNameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  bool _isFormValid = false;
+  bool _termsAccepted = false;
+
+  // form validation logic
+  String? validateFirstName(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter your first name';
+    }
+
+    final trimmedValue = value.trim();
+
+    if (trimmedValue.length < 2) {
+      return 'First name must be at least 2 characters long';
+    }
+
+    final nameRegExp = RegExp(r"^[A-Za-zÀ-ÿ ,.'-]+$");
+    if (!nameRegExp.hasMatch(trimmedValue)) {
+      return 'First name can only contain letters, spaces, hyphens, or apostrophes';
+    }
+
+    return null;
+  }
+
+  String? validateLastName(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter your last name';
+    }
+
+    final trimmedValue = value.trim();
+
+    if (trimmedValue.length < 2) {
+      return 'Last name must be at least 2 characters long';
+    }
+
+    final nameRegExp = RegExp(r"^[A-Za-zÀ-ÿ ,.'-]+$");
+    if (!nameRegExp.hasMatch(trimmedValue)) {
+      return 'Last name can only contain letters, spaces, hyphens, or apostrophes';
+    }
+
+    return null;
+  }
+
+  String? validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter your email address';
+    }
+
+    // Basic email validation
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(value)) {
+      return 'Please enter a valid email address';
+    }
+
+    return null;
+  }
+
+  String? validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter a password';
+    }
+
+    // Check minimum length
+    if (value.length < 6) {
+      return 'Password must be at least 6 characters long';
+    }
+
+    // Check for uppercase letters
+    if (!RegExp(r'[A-Z]').hasMatch(value)) {
+      return 'Password must contain at least one uppercase letter';
+    }
+
+    // Check for lowercase letters
+    if (!RegExp(r'[a-z]').hasMatch(value)) {
+      return 'Password must contain at least one lowercase letter';
+    }
+
+    // Check for numbers
+    if (!RegExp(r'[0-9]').hasMatch(value)) {
+      return 'Password must contain at least one number';
+    }
+
+    // Check for symbols
+    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
+      return 'Password must contain at least one symbol';
+    }
+
+    return null;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Add listeners to all controllers
+    firstNameController.addListener(_validateForm);
+    lastNameController.addListener(_validateForm);
+    emailController.addListener(_validateForm);
+    passwordController.addListener(_validateForm);
+  }
+
+  void _validateForm() {
+    final isValid =
+        validateFirstName(firstNameController.text) == null &&
+        validateLastName(lastNameController.text) == null &&
+        validateEmail(emailController.text) == null &&
+        validatePassword(passwordController.text) == null &&
+        _termsAccepted;
+
+    if (_isFormValid != isValid) {
+      setState(() {
+        _isFormValid = isValid;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final TextEditingController controller = TextEditingController();
-    bool _termsAccepted = false;
+    final authController = Provider.of<AuthController>(context);
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
@@ -25,6 +153,7 @@ class SignUpScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    SizedBox(height: 10.h),
                     CustomTextWidget(
                       text: 'Sign Up',
                       fontSize: 24.sp,
@@ -46,6 +175,8 @@ class SignUpScreen extends StatelessWidget {
               SizedBox(height: 24.h),
 
               Form(
+                key: _formKey,
+                autovalidateMode: AutovalidateMode.onUnfocus,
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16.w),
                   child: Column(
@@ -64,9 +195,10 @@ class SignUpScreen extends StatelessWidget {
                       SizedBox(height: 4.h),
                       AuthTextFormField(
                         hintText: 'Enter your first name',
-                        controller: controller,
+                        controller: firstNameController,
                         primaryBorderColor: Colors.transparent,
                         errorBorderColor: Colors.red,
+                        validator: validateFirstName,
                       ),
                       SizedBox(height: 12.sp),
 
@@ -83,9 +215,10 @@ class SignUpScreen extends StatelessWidget {
                       SizedBox(height: 4.h),
                       AuthTextFormField(
                         hintText: 'Enter your last name',
-                        controller: controller,
+                        controller: lastNameController,
                         primaryBorderColor: Colors.transparent,
                         errorBorderColor: Colors.red,
+                        validator: validateLastName,
                       ),
                       SizedBox(height: 12.sp),
 
@@ -102,9 +235,10 @@ class SignUpScreen extends StatelessWidget {
                       SizedBox(height: 4.h),
                       AuthTextFormField(
                         hintText: 'Enter your email address',
-                        controller: controller,
+                        controller: emailController,
                         primaryBorderColor: Colors.transparent,
                         errorBorderColor: Colors.red,
+                        validator: validateEmail,
                       ),
                       SizedBox(height: 12.sp),
 
@@ -121,9 +255,12 @@ class SignUpScreen extends StatelessWidget {
                       SizedBox(height: 4.h),
                       AuthTextFormField(
                         hintText: 'Enter a strong pasword',
-                        controller: controller,
+                        controller: passwordController,
                         primaryBorderColor: Colors.transparent,
                         errorBorderColor: Colors.red,
+
+                        obscureText: true,
+                        validator: validatePassword,
                       ),
 
                       SizedBox(height: 8.sp),
@@ -134,15 +271,18 @@ class SignUpScreen extends StatelessWidget {
                         children: [
                           Checkbox(
                             value: _termsAccepted,
-                            onChanged: (value) {},
-                            // value: _termsAccepted,
-                            // onChanged: (value) {
-                            //   setState(() {
-                            //     _termsAccepted = value ?? false;
-                            //     _validateForm();
-                            //   });
-                            // },
+                            onChanged: (value) {
+                              setState(() {
+                                _termsAccepted = value ?? false;
+                                _validateForm();
+                              });
+                            },
                             activeColor: fisrtHeaderTextColor,
+                            checkColor: buttonTextColor,
+
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4.r),
+                            ),
                           ),
                           CustomTextWidget(
                             text: 'I accept the ',
@@ -159,7 +299,62 @@ class SignUpScreen extends StatelessWidget {
                         ],
                       ),
                       SizedBox(height: 16.h),
-                      CustomButton(text: 'Sign Up', onTap: () async {}),
+                      CustomButton(
+                        text: 'Sign Up',
+                        onTap: () async {
+                          if (_formKey.currentState?.validate() ?? false) {
+                            try {
+                              debugPrint('Starting sign-up process...');
+                              final success = await authController.signUp(
+                                firstName: firstNameController.text.trim(),
+                                lastName: lastNameController.text.trim(),
+                                email: emailController.text.trim(),
+                                password: passwordController.text,
+                              );
+
+                              debugPrint('Sign-up result: $success');
+                              if (success) {
+                                if (!mounted) return;
+
+                                debugPrint(
+                                  'Navigating to verify email screen...',
+                                );
+                                // Clear the navigation stack and go to verify email screen
+                                Navigator.pushAndRemoveUntil(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => const VerifyEmailScreen(),
+                                  ),
+                                  (route) => false,
+                                );
+                              } else if (mounted) {
+                                debugPrint(
+                                  'Sign-up failed: ${authController.error}',
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(authController.error),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              debugPrint('Sign-up error: $e');
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'An error occurred: ${e.toString()}',
+                                    ),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          }
+                        },
+                      ),
                       SizedBox(height: 12.h),
 
                       // Divider with "or" text
@@ -229,7 +424,7 @@ class SignUpScreen extends StatelessWidget {
                       text: 'Sign In',
                       fontSize: 15.sp,
                       color: fisrtHeaderTextColor,
-                      fontWeight: FontWeight.normal,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -239,5 +434,23 @@ class SignUpScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    // Remove all listeners
+    firstNameController.removeListener(_validateForm);
+    lastNameController.removeListener(_validateForm);
+    emailController.removeListener(_validateForm);
+
+    passwordController.removeListener(_validateForm);
+
+    // Dispose controllers
+    firstNameController.dispose();
+    lastNameController.dispose();
+    emailController.dispose();
+
+    passwordController.dispose();
+    super.dispose();
   }
 }

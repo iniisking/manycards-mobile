@@ -1,20 +1,91 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:manycards/view/authentication/reset_password.dart';
 import 'package:manycards/view/authentication/sign_up_screen.dart';
+import 'package:manycards/view/bottom%20nav%20bar/main_screen.dart';
 import 'package:manycards/view/constants/text/text.dart';
 import 'package:manycards/view/constants/widgets/button.dart';
 import 'package:manycards/view/constants/widgets/colors.dart';
 import 'package:manycards/view/constants/widgets/textfield.dart';
+import 'package:provider/provider.dart';
+import 'package:manycards/controller/auth_controller.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final TextEditingController emailController = TextEditingController();
-    final TextEditingController passwordController = TextEditingController();
+  State<LoginScreen> createState() => _LoginScreenState();
+}
 
+class _LoginScreenState extends State<LoginScreen> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  bool _isFormValid = false;
+  @override
+  void initState() {
+    super.initState();
+    // Add listeners to track form changes
+    emailController.addListener(_validateForm);
+    passwordController.addListener(_validateForm);
+  }
+
+  void _validateForm() {
+    final isValid =
+        validateLoginEmail(emailController.text) == null &&
+        validateLoginPassword(passwordController.text) == null;
+
+    if (_isFormValid != isValid) {
+      setState(() {
+        _isFormValid = isValid;
+      });
+    }
+  }
+
+  //email validation
+  String? validateLoginEmail(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter your email address';
+    }
+
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(value.trim())) {
+      return 'Please enter a valid email address';
+    }
+
+    return null;
+  }
+
+  //password validation
+  String? validateLoginPassword(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter your password';
+    }
+
+    if (value.length < 6) {
+      return 'Password must be at least 6 characters';
+    }
+
+    return null;
+  }
+
+  @override
+  void dispose() {
+    // Remove listeners
+    emailController.removeListener(_validateForm);
+    passwordController.removeListener(_validateForm);
+
+    // Dispose controllers
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authController = Provider.of<AuthController>(context);
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
@@ -27,6 +98,7 @@ class LoginScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    SizedBox(height: 10.h),
                     CustomTextWidget(
                       text: 'Welcome Back',
                       fontSize: 24.sp,
@@ -47,6 +119,8 @@ class LoginScreen extends StatelessWidget {
               SizedBox(height: 24.h),
 
               Form(
+                key: _formKey,
+                autovalidateMode: AutovalidateMode.onUnfocus,
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16.w),
                   child: Column(
@@ -68,6 +142,7 @@ class LoginScreen extends StatelessWidget {
                         controller: emailController,
                         primaryBorderColor: Colors.transparent,
                         errorBorderColor: Colors.red,
+                        validator: validateLoginEmail,
                       ),
                       SizedBox(height: 12.h),
 
@@ -88,6 +163,7 @@ class LoginScreen extends StatelessWidget {
                         primaryBorderColor: Colors.transparent,
                         errorBorderColor: Colors.red,
                         obscureText: true,
+                        validator: validateLoginPassword,
                       ),
                       SizedBox(height: 12.h),
 
@@ -118,7 +194,38 @@ class LoginScreen extends StatelessWidget {
                       CustomButton(
                         text: 'Log In',
                         onTap: () async {
-                          // Handle login
+                          try {
+                            final success = await authController.signIn(
+                              emailController.text.trim(), // Trim spaces
+                              passwordController.text,
+                            );
+
+                            if (success && mounted) {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const MainScreen(),
+                                ),
+                              );
+                            } else {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Login failed')),
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            debugPrint(
+                              "Sign in error: $e",
+                            ); // Print the full error message
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error: ${e.toString()}'),
+                                ),
+                              );
+                            }
+                          }
                         },
                       ),
                       SizedBox(height: 12.h),
@@ -187,7 +294,7 @@ class LoginScreen extends StatelessWidget {
                               text: 'Sign Up',
                               fontSize: 15.sp,
                               color: fisrtHeaderTextColor,
-                              fontWeight: FontWeight.normal,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],

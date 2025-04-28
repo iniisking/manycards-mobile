@@ -10,6 +10,7 @@ import 'package:manycards/view/constants/widgets/transaction_row_widget.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../controller/currency_controller.dart';
+import '../../controller/auth_controller.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -46,6 +47,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Provider.of<CurrencyController>(context);
+    final authController = Provider.of<AuthController>(context);
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -69,7 +71,7 @@ class HomeScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       CustomTextWidget(
-                        text: 'Welcome, Ini',
+                        text: 'Welcome, ${authController.firstName}',
                         fontSize: 20.sp,
                         color: fisrtHeaderTextColor,
                         fontWeight: FontWeight.bold,

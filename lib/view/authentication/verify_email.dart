@@ -1,19 +1,23 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:manycards/view/authentication/login_screen.dart';
 import 'package:manycards/view/constants/text/text.dart';
 import 'package:manycards/view/constants/widgets/button.dart';
 import 'package:manycards/view/constants/widgets/colors.dart';
 import 'package:manycards/gen/assets.gen.dart';
+import 'package:manycards/view/bottom nav bar/main_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:manycards/controller/auth_controller.dart';
 
-class ConfirmReset extends StatefulWidget {
-  const ConfirmReset({super.key});
+class VerifyEmailScreen extends StatefulWidget {
+  const VerifyEmailScreen({super.key});
 
   @override
-  State<ConfirmReset> createState() => _ConfirmResetState();
+  State<VerifyEmailScreen> createState() => _VerifyEmailState();
 }
 
-class _ConfirmResetState extends State<ConfirmReset>
+class _VerifyEmailState extends State<VerifyEmailScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
@@ -48,6 +52,9 @@ class _ConfirmResetState extends State<ConfirmReset>
 
   @override
   Widget build(BuildContext context) {
+    final authController = Provider.of<AuthController>(context);
+    final email = authController.lastEmail;
+
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
@@ -60,11 +67,7 @@ class _ConfirmResetState extends State<ConfirmReset>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: const [AppBackButton()],
-                    ),
-                    SizedBox(height: 16.h),
+                    SizedBox(height: 40.h),
                     FadeTransition(
                       opacity: _fadeAnimation,
                       child: ScaleTransition(
@@ -101,7 +104,7 @@ class _ConfirmResetState extends State<ConfirmReset>
                       opacity: _fadeAnimation,
                       child: CustomTextWidget(
                         text:
-                            'We\'ve sent a password reset link to your email. Please check your inbox and click the link to continue.',
+                            'We\'ve sent a link to $email. Please check your inbox and click the link to verify your email.',
                         fontSize: 14.sp,
                         color: secondHeadTextColor,
                         fontWeight: FontWeight.normal,
@@ -120,12 +123,29 @@ class _ConfirmResetState extends State<ConfirmReset>
                   child: CustomButton(
                     text: 'Continue',
                     onTap: () async {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const LoginScreen(),
-                        ),
-                      );
+                      // Check if email is verified
+                      await authController.checkEmailVerification();
+
+                      if (authController.isEmailVerified) {
+                        if (mounted) {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const MainScreen(),
+                            ),
+                          );
+                        }
+                      } else {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Email not verified yet. Please check your inbox and click the verification link.',
+                              ),
+                            ),
+                          );
+                        }
+                      }
                     },
                   ),
                 ),

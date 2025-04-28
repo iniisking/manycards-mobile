@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1040831826907",
+    "project_id": "manycards-1e005",
+    "storage_bucket": "manycards-1e005.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1040831826907:android:1ee86d533dac9cc7ee35fe",
+        "android_client_info": {
+          "package_name": "com.example.manycards"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAMyD9mx8GXlq8W3u_ibwpdgYFbNmUkwtQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
