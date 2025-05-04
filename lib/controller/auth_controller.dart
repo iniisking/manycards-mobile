@@ -167,12 +167,12 @@ class AuthController extends ChangeNotifier {
           _lastEmail = email;
           _firstName = firstName;
 
-          // Ensure state is updated before returning
+          // Ensure state is updated
           _isLoading = false;
           notifyListeners();
 
-          // Add a small delay to ensure state is updated
-          await Future.delayed(const Duration(milliseconds: 100));
+          // Wait for state to be fully updated
+          await Future.delayed(const Duration(milliseconds: 500));
 
           debugPrint('Sign-up completed successfully, returning true');
           return true;

@@ -22,6 +22,7 @@ class _VerifyEmailState extends State<VerifyEmailScreen>
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
+  bool _isChecking = false;
 
   @override
   void initState() {
@@ -120,33 +121,80 @@ class _VerifyEmailState extends State<VerifyEmailScreen>
                 padding: EdgeInsets.symmetric(horizontal: 16.w),
                 child: FadeTransition(
                   opacity: _fadeAnimation,
-                  child: CustomButton(
-                    text: 'Continue',
-                    onTap: () async {
-                      // Check if email is verified
-                      await authController.checkEmailVerification();
+                  child: Column(
+                    children: [
+                      CustomButton(
+                        text: _isChecking ? 'Checking...' : 'Continue',
+                        onTap:
+                            _isChecking
+                                ? null
+                                : () async {
+                                  setState(() {
+                                    _isChecking = true;
+                                  });
 
-                      if (authController.isEmailVerified) {
-                        if (mounted) {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const MainScreen(),
-                            ),
-                          );
-                        }
-                      } else {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Email not verified yet. Please check your inbox and click the verification link.',
+                                  try {
+                                    // Check if email is verified
+                                    await authController
+                                        .checkEmailVerification();
+
+                                    if (authController.isEmailVerified) {
+                                      if (mounted) {
+                                        Navigator.pushAndRemoveUntil(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder:
+                                                (context) => const MainScreen(),
+                                          ),
+                                          (route) => false,
+                                        );
+                                      }
+                                    } else {
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Email not verified yet. Please check your inbox and click the verification link.',
+                                            ),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  } finally {
+                                    if (mounted) {
+                                      setState(() {
+                                        _isChecking = false;
+                                      });
+                                    }
+                                  }
+                                },
+                      ),
+                      SizedBox(height: 16.h),
+                      TextButton(
+                        onPressed: () async {
+                          await authController.resendVerificationEmail();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Verification email resent. Please check your inbox.',
+                                ),
                               ),
-                            ),
-                          );
-                        }
-                      }
-                    },
+                            );
+                          }
+                        },
+                        child: Text(
+                          'Resend Verification Email',
+                          style: TextStyle(
+                            color: fisrtHeaderTextColor,
+                            fontSize: 14.sp,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
