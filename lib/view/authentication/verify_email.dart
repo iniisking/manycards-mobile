@@ -6,7 +6,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:manycards/view/constants/text/text.dart';
 import 'package:manycards/view/constants/widgets/button.dart';
 import 'package:manycards/view/constants/widgets/colors.dart';
-import 'package:manycards/gen/assets.gen.dart';
 import 'package:manycards/view/bottom nav bar/main_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:manycards/controller/auth_controller.dart';
