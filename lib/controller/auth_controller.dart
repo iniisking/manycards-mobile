@@ -1,392 +1,230 @@
-// lib/providers/auth_provider.dart
-// ignore_for_file: avoid_print
-
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:manycards/services/auth_service.dart';
-import 'package:manycards/services/firestore_service.dart';
 import 'package:flutter/material.dart';
+import 'package:manycards/model/auth/req/confirm_sign_up_req.dart';
+import 'package:manycards/model/auth/req/sign_up_req.dart';
+import 'package:manycards/model/auth/res/login_res.dart';
+import 'package:manycards/services/auth_service.dart';
 
 class AuthController extends ChangeNotifier {
-  final AuthService _authService = AuthService();
-  final FirestoreService _firestoreService = FirestoreService();
-
-  User? _user;
+  final AuthService _authService;
   bool _isLoading = false;
-  String _error = '';
-  String _lastEmail = '';
+  bool _isLoggedIn = false;
   bool _isEmailVerified = false;
-  String _lastEmailSent = '';
-  String _firstName = '';
+  String? _error;
+  LoginRes? _user;
+  String? _lastEmail;
 
-  AuthController() {
-    debugPrint('AuthController initialized');
+  AuthController(this._authService) {
     _initializeAuthState();
   }
 
-  Future<void> _initializeAuthState() async {
-    debugPrint('Initializing auth state');
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      // Get the current user
-      _user = _authService.currentUser;
-      debugPrint('Current user: ${_user?.email}');
-
-      if (_user != null) {
-        _isEmailVerified = _user!.emailVerified;
-        debugPrint('Email verified: $_isEmailVerified');
-
-        // Get user profile from Firestore
-        final userProfile = await _firestoreService.getUserProfile(_user!.uid);
-        if (userProfile != null) {
-          _firstName = userProfile['firstName'] ?? '';
-          debugPrint('Retrieved first name: $_firstName');
-        } else {
-          debugPrint('No user profile found, using display name');
-          _firstName = _user!.displayName?.split(' ').first ?? '';
-        }
-      }
-
-      // Listen to auth state changes
-      _authService.authStateChanges.listen((User? user) async {
-        debugPrint('Auth state changed. New user: ${user?.email}');
-        _user = user;
-        _isEmailVerified = user?.emailVerified ?? false;
-
-        if (user != null) {
-          // Get user profile from Firestore when auth state changes
-          final userProfile = await _firestoreService.getUserProfile(user.uid);
-          if (userProfile != null) {
-            _firstName = userProfile['firstName'] ?? '';
-            debugPrint(
-              'Updated first name from auth state change: $_firstName',
-            );
-          } else {
-            debugPrint(
-              'No user profile found in auth state change, using display name',
-            );
-            _firstName = user.displayName?.split(' ').first ?? '';
-          }
-        } else {
-          _firstName = '';
-          debugPrint('User signed out, cleared first name');
-        }
-
-        notifyListeners();
-      });
-    } catch (e) {
-      debugPrint('Error initializing auth state: $e');
-      _error = 'Error initializing auth state';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
   // Getters
-  User? get user => _user;
-  bool get isLoggedIn => _user != null;
   bool get isLoading => _isLoading;
-  String get error => _error;
-  String get lastEmail => _lastEmail;
+  bool get isLoggedIn => _isLoggedIn;
   bool get isEmailVerified => _isEmailVerified;
-  String get lastEmailSent => _lastEmailSent;
-  String get firstName => _firstName;
+  String? get error => _error;
+  LoginRes? get user => _user;
+  String? get lastEmail => _lastEmail;
+  String get firstName =>
+      user?.data.email.split('@')[0].split('.')[0].capitalize() ?? 'User';
 
-  // Sign in
-  Future<bool> signIn(String email, String password) async {
-    _isLoading = true;
-    _error = '';
-    notifyListeners();
-
+  // Initialize auth state
+  Future<void> _initializeAuthState() async {
+    _setLoading(true);
     try {
-      await _authService.signIn(email, password);
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _isLoading = false;
-      _error = _getUserFriendlyError(e);
-      notifyListeners();
-      return false;
-    }
-  }
-
-  // Sign up with full profile
-  Future<bool> signUp({
-    required String firstName,
-    required String lastName,
-    required String email,
-    required String password,
-  }) async {
-    debugPrint('Starting signUp process...');
-    _isLoading = true;
-    _error = '';
-    _lastEmail = email;
-    _firstName = firstName;
-    notifyListeners();
-
-    try {
-      debugPrint('Checking if email is already in use...');
-      // Check if user already exists
-      final methods = await _authService.getSignInMethods(email);
-      if (methods.isNotEmpty) {
-        _error = 'An account with this email already exists';
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-
-      debugPrint('Creating new user account...');
-      // Create the user account
-      final userCredential = await _authService.signUp(email, password);
-
-      if (userCredential?.user != null) {
-        try {
-          debugPrint('Creating user profile in Firestore...');
-          // Create user profile in Firestore
-          await _firestoreService.createUserProfile(
-            userCredential!.user!.uid,
-            firstName,
-            lastName,
-            email,
-          );
-
-          debugPrint('Updating display name...');
-          // Update display name
-          await userCredential.user!.updateDisplayName('$firstName $lastName');
-
-          debugPrint('Sending verification email...');
-          // Send verification email
-          await userCredential.user!.sendEmailVerification();
-          debugPrint('Verification email sent successfully');
-
-          // Update the current user and state
-          _user = userCredential.user;
-          _isEmailVerified = false;
-          _lastEmail = email;
-          _firstName = firstName;
-
-          // Ensure state is updated
-          _isLoading = false;
-          notifyListeners();
-
-          debugPrint('Sign-up completed successfully, returning true');
-          return true;
-        } catch (profileError) {
-          debugPrint('Error during profile setup: $profileError');
-          // If profile creation fails, delete the user account
-          if (userCredential?.user != null) {
-            await userCredential!.user!.delete();
-          }
-          _error = 'Account creation failed. Please try again.';
-          _isLoading = false;
-          notifyListeners();
-          return false;
-        }
-      } else {
-        debugPrint('Failed to create user account');
-        _error = 'Failed to create user account';
-        _isLoading = false;
-        notifyListeners();
-        return false;
+      _isLoggedIn = await _authService.isLoggedIn();
+      if (_isLoggedIn) {
+        // TODO: Implement token validation and email verification check
+        _isEmailVerified =
+            true; // This should be set based on actual verification status
       }
     } catch (e) {
-      debugPrint('Registration error: $e');
-      _error = _getUserFriendlyError(e);
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  // Sign out
-  Future<void> signOut() async {
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      await _authService.signOut();
-      _user = null;
-      _firstName = '';
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Sign out error: $e');
-      _error = 'Error signing out';
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  // Clear errors
-  void clearError() {
-    _error = '';
-    notifyListeners();
-  }
-
-  // Get user-friendly error messages
-  String _getUserFriendlyError(dynamic error) {
-    if (error is FirebaseAuthException) {
-      switch (error.code) {
-        case 'email-already-in-use':
-          return 'This email is already registered';
-        case 'weak-password':
-          return 'Password is too weak';
-        case 'invalid-email':
-          return 'Invalid email address';
-        case 'user-not-found':
-          return 'No account found with this email';
-        case 'wrong-password':
-          return 'Incorrect password';
-        case 'user-disabled':
-          return 'This account has been disabled';
-        default:
-          return 'An error occurred: ${error.message}';
-      }
-    }
-    return 'An unexpected error occurred';
-  }
-
-  Future<void> checkEmailVerification() async {
-    try {
-      // Reload the user to get the latest verification status
-      await _user?.reload();
-      _user = _authService.currentUser;
-      _isEmailVerified = _user?.emailVerified ?? false;
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error checking email verification: $e');
-      _error = 'Error checking email verification';
-      notifyListeners();
-    }
-  }
-
-  Future<void> resendVerificationEmail() async {
-    try {
-      await _user?.sendEmailVerification();
-      _lastEmailSent = _user?.email ?? '';
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error resending verification email: $e');
-      _error = 'Failed to resend verification email';
-      notifyListeners();
-    }
-  }
-
-  // Reset password
-  Future<bool> resetPassword(String email) async {
-    _isLoading = true;
-    _error = '';
-    notifyListeners();
-
-    try {
-      await _authService.sendPasswordResetEmail(email);
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _isLoading = false;
-      _error = _getUserFriendlyError(e);
-      notifyListeners();
-      return false;
-    }
-  }
-
-  // Update password
-  Future<bool> updatePassword(String newPassword) async {
-    _isLoading = true;
-    _error = '';
-    notifyListeners();
-
-    try {
-      await _user?.updatePassword(newPassword);
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _isLoading = false;
-      _error = _getUserFriendlyError(e);
-      notifyListeners();
-      return false;
-    }
-  }
-
-  // Google sign-in
-  Future<void> signInWithGoogle(BuildContext context) async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-
-      final userCredential = await _authService.signInWithGoogle();
-
-      if (userCredential == null) {
-        // User canceled the sign-in
-        _isLoading = false;
-        notifyListeners();
-        return;
-      }
-
-      if (userCredential.user != null) {
-        if (!userCredential.user!.emailVerified) {
-          await userCredential.user!.sendEmailVerification();
-          if (context.mounted) {
-            Navigator.pushReplacementNamed(context, '/verify-email');
-          }
-        } else {
-          if (context.mounted) {
-            Navigator.pushReplacementNamed(context, '/home');
-          }
-        }
-      }
-    } on FirebaseAuthException catch (e) {
-      String errorMessage;
-      switch (e.code) {
-        case 'account-exists-with-different-credential':
-          errorMessage =
-              'An account already exists with the same email address but different sign-in credentials.';
-          break;
-        case 'invalid-credential':
-          errorMessage = 'The credential provided is invalid or has expired.';
-          break;
-        case 'operation-not-allowed':
-          errorMessage =
-              'Google sign-in is not enabled. Please contact support.';
-          break;
-        case 'user-disabled':
-          errorMessage = 'This user account has been disabled.';
-          break;
-        case 'user-not-found':
-          errorMessage = 'No user found with this email.';
-          break;
-        case 'wrong-password':
-          errorMessage = 'Wrong password provided.';
-          break;
-        case 'network-request-failed':
-          errorMessage =
-              'Network error occurred. Please check your internet connection.';
-          break;
-        default:
-          errorMessage = 'An unexpected error occurred. Please try again.';
-      }
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(errorMessage)));
-      }
-    } catch (e) {
-      debugPrint('Unexpected error during Google sign-in: $e');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('An unexpected error occurred. Please try again.'),
-          ),
-        );
-      }
+      _setError(e.toString());
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      _setLoading(false);
     }
+  }
+
+  // Sign Up with full name
+  Future<bool> signUp(String fullName, String email, String password) async {
+    _setLoading(true);
+    _clearError();
+    try {
+      // Split full name into first and last name
+      final nameParts = fullName.trim().split(' ');
+      if (nameParts.length != 2) {
+        _setError('Please enter your full name (first and last name)');
+        return false;
+      }
+
+      final request = SignUpReq(
+        email: email,
+        firstName: nameParts[0],
+        lastName: nameParts[1],
+        password: password,
+      );
+
+      final response = await _authService.signUp(request);
+      if (response.success) {
+        _lastEmail = email;
+        return true;
+      } else {
+        _setError(response.message);
+        return false;
+      }
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Sign In
+  Future<bool> signIn(String email, String password) async {
+    _setLoading(true);
+    _clearError();
+    try {
+      final response = await _authService.login(
+        email: email,
+        password: password,
+      );
+      if (response.success) {
+        _user = response;
+        _isLoggedIn = true;
+        _isEmailVerified = true;
+        notifyListeners();
+        return true;
+      } else {
+        _setError(response.message);
+        return false;
+      }
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Confirm Sign Up
+  Future<bool> confirmSignUp(String email, String code) async {
+    _setLoading(true);
+    _clearError();
+    try {
+      final request = ConfirmSignUpReq(email: email, code: code);
+      final response = await _authService.confirmSignUp(request);
+      if (response.success) {
+        _isEmailVerified = true;
+        notifyListeners();
+        return true;
+      } else {
+        _setError(response.message);
+        return false;
+      }
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Check Email Verification
+  Future<void> checkEmailVerification() async {
+    _setLoading(true);
+    _clearError();
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+      _isEmailVerified = true;
+      notifyListeners();
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Resend Verification Email
+  Future<void> resendVerificationEmail() async {
+    _setLoading(true);
+    _clearError();
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Logout
+  Future<void> logout() async {
+    _setLoading(true);
+    try {
+      await _authService.logout();
+      _user = null;
+      _isLoggedIn = false;
+      _isEmailVerified = false;
+      notifyListeners();
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Sign Out (alias for logout)
+  Future<void> signOut() async => logout();
+
+  // Reset Password
+  Future<bool> resetPassword(String email) async {
+    _setLoading(true);
+    _clearError();
+    try {
+      // TODO: Implement actual password reset API call
+      await Future.delayed(const Duration(seconds: 1)); // Simulate API call
+      _lastEmail = email;
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Google Sign In
+  Future<void> signInWithGoogle(BuildContext context) async {
+    _setLoading(true);
+    _clearError();
+    try {
+      // TODO: Implement Google Sign In
+      throw UnimplementedError('Google Sign In not implemented yet');
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Helper methods
+  void _setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+
+  void _setError(String? value) {
+    _error = value;
+    notifyListeners();
+  }
+
+  void _clearError() {
+    _error = null;
+  }
+}
+
+extension StringExtension on String {
+  String capitalize() {
+    return "${this[0].toUpperCase()}${substring(1).toLowerCase()}";
   }
 }

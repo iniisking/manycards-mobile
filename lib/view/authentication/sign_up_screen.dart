@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:manycards/view/authentication/login_screen.dart';
+import 'package:manycards/view/authentication/verify_email.dart';
 import 'package:manycards/view/constants/text/text.dart';
 import 'package:manycards/view/constants/widgets/button.dart';
 import 'package:manycards/view/constants/widgets/colors.dart';
@@ -19,47 +20,33 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  final TextEditingController firstNameController = TextEditingController();
-  final TextEditingController lastNameController = TextEditingController();
+  final TextEditingController fullNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool _isFormValid = false;
   bool _termsAccepted = false;
 
   // form validation logic
-  String? validateFirstName(String? value) {
+  String? validateFullName(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Please enter your first name';
+      return 'Please enter your full name';
     }
 
     final trimmedValue = value.trim();
+    final nameParts = trimmedValue.split(' ');
 
-    if (trimmedValue.length < 2) {
-      return 'First name must be at least 2 characters long';
+    if (nameParts.length != 2) {
+      return 'Please enter your first and last name';
     }
 
     final nameRegExp = RegExp(r"^[A-Za-zÀ-ÿ ,.'-]+$");
-    if (!nameRegExp.hasMatch(trimmedValue)) {
-      return 'First name can only contain letters, spaces, hyphens, or apostrophes';
+    if (!nameRegExp.hasMatch(nameParts[0]) ||
+        !nameRegExp.hasMatch(nameParts[1])) {
+      return 'Name can only contain letters, spaces, hyphens, or apostrophes';
     }
 
-    return null;
-  }
-
-  String? validateLastName(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Please enter your last name';
-    }
-
-    final trimmedValue = value.trim();
-
-    if (trimmedValue.length < 2) {
-      return 'Last name must be at least 2 characters long';
-    }
-
-    final nameRegExp = RegExp(r"^[A-Za-zÀ-ÿ ,.'-]+$");
-    if (!nameRegExp.hasMatch(trimmedValue)) {
-      return 'Last name can only contain letters, spaces, hyphens, or apostrophes';
+    if (nameParts[0].length < 2 || nameParts[1].length < 2) {
+      return 'First and last name must be at least 2 characters long';
     }
 
     return null;
@@ -116,16 +103,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
   void initState() {
     super.initState();
     // Add listeners to all controllers
-    firstNameController.addListener(_validateForm);
-    lastNameController.addListener(_validateForm);
+    fullNameController.addListener(_validateForm);
     emailController.addListener(_validateForm);
     passwordController.addListener(_validateForm);
   }
 
   void _validateForm() {
     final isValid =
-        validateFirstName(firstNameController.text) == null &&
-        validateLastName(lastNameController.text) == null &&
+        validateFullName(fullNameController.text) == null &&
         validateEmail(emailController.text) == null &&
         validatePassword(passwordController.text) == null &&
         _termsAccepted;
@@ -181,11 +166,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      //First name field
+                      // Full name field
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 8.w),
                         child: CustomTextWidget(
-                          text: 'First Name',
+                          text: 'Full Name',
                           fontSize: 14.sp,
                           color: fisrtHeaderTextColor,
                           fontWeight: FontWeight.normal,
@@ -193,31 +178,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       SizedBox(height: 4.h),
                       AuthTextFormField(
-                        hintText: 'Enter your first name',
-                        controller: firstNameController,
+                        hintText: 'Enter your first and last name',
+                        controller: fullNameController,
                         primaryBorderColor: Colors.transparent,
                         errorBorderColor: Colors.red,
-                        validator: validateFirstName,
-                      ),
-                      SizedBox(height: 12.sp),
-
-                      //Last name field
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8.w),
-                        child: CustomTextWidget(
-                          text: 'Last Name',
-                          fontSize: 14.sp,
-                          color: fisrtHeaderTextColor,
-                          fontWeight: FontWeight.normal,
-                        ),
-                      ),
-                      SizedBox(height: 4.h),
-                      AuthTextFormField(
-                        hintText: 'Enter your last name',
-                        controller: lastNameController,
-                        primaryBorderColor: Colors.transparent,
-                        errorBorderColor: Colors.red,
-                        validator: validateLastName,
+                        validator: validateFullName,
                       ),
                       SizedBox(height: 12.sp),
 
@@ -305,20 +270,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             try {
                               debugPrint('Starting sign-up process in UI...');
                               final success = await authController.signUp(
-                                firstName: firstNameController.text.trim(),
-                                lastName: lastNameController.text.trim(),
-                                email: emailController.text.trim(),
-                                password: passwordController.text,
+                                fullNameController.text.trim(),
+                                emailController.text.trim(),
+                                passwordController.text,
                               );
 
                               debugPrint('Sign-up result in UI: $success');
-                              if (!success && mounted) {
+                              if (success && mounted) {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => const VerifyEmailScreen(),
+                                  ),
+                                );
+                              } else if (mounted) {
                                 debugPrint(
                                   'Sign-up failed in UI: ${authController.error}',
                                 );
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text(authController.error),
+                                    content: Text(
+                                      authController.error ?? 'Sign up failed',
+                                    ),
                                     backgroundColor: Colors.red,
                                   ),
                                 );
@@ -371,15 +345,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       SizedBox(height: 12.h),
 
-                      // Google sign-in button
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 10.w),
-                        child: GoogleSignInButton(
-                          onPressed: () async {
-                            await authController.signInWithGoogle(context);
-                          },
-                        ),
-                      ),
+                      // TODO: Implement Google sign-in
+                      // Padding(
+                      //   padding: EdgeInsets.symmetric(horizontal: 10.w),
+                      //   child: GoogleSignInButton(
+                      //     onPressed: () async {
+                      //       await authController.signInWithGoogle(context);
+                      //     },
+                      //   ),
+                      // ),
                     ],
                   ),
                 ),
@@ -423,17 +397,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   void dispose() {
     // Remove all listeners
-    firstNameController.removeListener(_validateForm);
-    lastNameController.removeListener(_validateForm);
+    fullNameController.removeListener(_validateForm);
     emailController.removeListener(_validateForm);
-
     passwordController.removeListener(_validateForm);
 
     // Dispose controllers
-    firstNameController.dispose();
-    lastNameController.dispose();
+    fullNameController.dispose();
     emailController.dispose();
-
     passwordController.dispose();
     super.dispose();
   }

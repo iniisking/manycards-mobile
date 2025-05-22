@@ -16,7 +16,7 @@ class AuthWrapper extends StatelessWidget {
 
     // Debug print
     debugPrint(
-      'AuthWrapper rebuild: isLoggedIn=${authController.isLoggedIn}, user=${authController.user?.email}, isEmailVerified=${authController.isEmailVerified}',
+      'AuthWrapper rebuild: isLoggedIn=${authController.isLoggedIn}, user=${authController.user?.data.email}, isEmailVerified=${authController.isEmailVerified}',
     );
 
     // Show loading indicator while initializing

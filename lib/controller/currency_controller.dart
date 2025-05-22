@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:manycards/model/currency_service.dart';
+import 'package:manycards/services/currency_service.dart';
 import '../model/currency_model.dart';
 
 class CurrencyController extends ChangeNotifier {

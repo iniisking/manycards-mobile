@@ -147,7 +147,9 @@ class _ResetPasswordState extends State<ResetPassword> {
                             } else if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text(authController.error),
+                                  content: Text(
+                                    authController.error ?? 'An error occurred',
+                                  ),
                                   backgroundColor: Colors.red,
                                 ),
                               );

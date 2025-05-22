@@ -1,122 +1,110 @@
-// ignore_for_file: avoid_print
+import 'package:manycards/config/api_endpoints.dart';
+import 'package:manycards/model/auth/req/confirm_sign_up_req.dart';
+import 'package:manycards/model/auth/req/sign_up_req.dart';
+import 'package:manycards/model/auth/res/confirm_forgot_password_res.dart';
+import 'package:manycards/model/auth/res/confirm_sign_up_res.dart';
+import 'package:manycards/model/auth/res/forgot_password_res.dart';
+import 'package:manycards/model/auth/res/login_res.dart';
+import 'package:manycards/model/auth/res/sign_up_res.dart';
+import 'package:manycards/services/base_api_service.dart';
+import 'package:manycards/services/storage_service.dart';
 
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:flutter/foundation.dart';
+class AuthService extends BaseApiService {
+  final StorageService _storageService;
+  static const String _tokenKey = 'cognito_id_token';
 
-class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  AuthService({required super.client, StorageService? storageService})
+    : _storageService = storageService ?? StorageService();
 
-  // Get current user
-  User? get currentUser => _auth.currentUser;
+  Future<void> setAuthToken(String token) async {
+    await _storageService.saveToken(_tokenKey, token);
+  }
 
-  // Auth state stream
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
+  Future<String?> getAuthToken() async {
+    return await _storageService.getToken(_tokenKey);
+  }
 
-  // Check if email is verified
-  bool get isEmailVerified => _auth.currentUser?.emailVerified ?? false;
+  Future<void> clearAuthToken() async {
+    await _storageService.deleteToken(_tokenKey);
+  }
 
-  // Get sign-in methods for an email
-  Future<List<String>> getSignInMethods(String email) async {
-    try {
-      return await _auth.fetchSignInMethodsForEmail(email);
-    } catch (e) {
-      print('Error checking sign-in methods: $e');
-      return [];
+  Future<bool> isLoggedIn() async {
+    final token = await getAuthToken();
+    return token != null;
+  }
+
+  Future<void> refreshToken() async {
+    throw UnimplementedError('Token refresh not implemented');
+  }
+
+  Future<SignUpRes> signUp(SignUpReq request) async {
+    final response = await post(
+      ApiEndpoints.signUp,
+      body: {
+        'email': request.email,
+        'password': request.password,
+        'first_name': request.firstName,
+        'last_name': request.lastName,
+      },
+    );
+
+    return SignUpRes.fromJson(response);
+  }
+
+  Future<ConfirmSignUpRes> confirmSignUp(ConfirmSignUpReq request) async {
+    final response = await post(
+      ApiEndpoints.confirmSignUp,
+      body: {'email': request.email, 'code': request.code},
+    );
+
+    return ConfirmSignUpRes.fromJson(response);
+  }
+
+  Future<LoginRes> login({
+    required String email,
+    required String password,
+  }) async {
+    final response = await post(
+      ApiEndpoints.login,
+      body: {'email': email, 'password': password},
+      requiresAuth: false,
+    );
+
+    final loginResponse = LoginRes.fromJson(response);
+
+    if (loginResponse.success) {
+      await setAuthToken(loginResponse.data.idToken);
     }
+
+    return loginResponse;
   }
 
-  // Send email verification
-  Future<void> sendEmailVerification() async {
-    try {
-      await _auth.currentUser?.sendEmailVerification();
-    } catch (e) {
-      print('Email verification error: $e');
-      rethrow;
-    }
+  Future<ForgotPasswordRes> forgotPassword({required String email}) async {
+    final response = await post(
+      ApiEndpoints.forgotPassword,
+      body: {'email': email},
+    );
+    return ForgotPasswordRes.fromJson(response);
   }
 
-  // Sign up
-  Future<UserCredential?> signUp(String email, String password) async {
-    try {
-      final userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      // Send verification email
-      await userCredential.user?.sendEmailVerification();
-
-      return userCredential;
-    } catch (e) {
-      print('Sign up error: $e');
-      rethrow;
-    }
+  Future<ConfirmForgotPasswordRes> confirmForgotPassword({
+    required String email,
+    required String code,
+    required String password,
+  }) async {
+    final response = await post(
+      ApiEndpoints.confirmForgotPassword,
+      body: {'email': email, 'code': code, 'password': password},
+    );
+    return ConfirmForgotPasswordRes.fromJson(response);
   }
 
-  // Sign in
-  Future<UserCredential?> signIn(String email, String password) async {
-    try {
-      return await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-    } catch (e) {
-      print('Sign in error: $e');
-      rethrow;
-    }
+  Future<void> logout() async {
+    await clearAuthToken();
   }
 
-  // Sign out
-  Future<void> signOut() async {
-    await _auth.signOut();
-  }
-
-  // Send password reset email
-  Future<void> sendPasswordResetEmail(String email) async {
-    try {
-      await _auth.sendPasswordResetEmail(email: email);
-    } catch (e) {
-      print('Password reset error: $e');
-      rethrow;
-    }
-  }
-
-  // Google sign-in
-  Future<UserCredential?> signInWithGoogle() async {
-    try {
-      debugPrint('Starting Google sign-in process...');
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-
-      if (googleUser == null) {
-        debugPrint('Google sign-in was canceled by user');
-        return null;
-      }
-
-      debugPrint('Got Google user: ${googleUser.email}');
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-      debugPrint('Got Google auth tokens');
-
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-      debugPrint('Created Firebase credential');
-
-      final userCredential = await _auth.signInWithCredential(credential);
-      debugPrint(
-        'Successfully signed in with Google: ${userCredential.user?.email}',
-      );
-      return userCredential;
-    } catch (e, stackTrace) {
-      debugPrint('Google sign-in error: $e');
-      debugPrint('Stack trace: $stackTrace');
-      if (e is FirebaseAuthException) {
-        debugPrint('Firebase Auth Error Code: ${e.code}');
-        debugPrint('Firebase Auth Error Message: ${e.message}');
-      }
-      rethrow;
-    }
-  }
+  // Future<void> resendVerificationEmail() async {
+  //   // TODO: Implement resend verification email API call
+  //   throw UnimplementedError('Resend verification email not implemented yet');
+  // }
 }
