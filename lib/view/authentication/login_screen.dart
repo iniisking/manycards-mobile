@@ -264,8 +264,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 10.w),
                         child: GoogleSignInButton(
-                          onPressed: () {
-                            // Handle Google sign-in
+                          onPressed: () async {
+                            await authController.signInWithGoogle(context);
                           },
                         ),
                       ),

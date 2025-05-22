@@ -21,7 +21,7 @@ class _CurrencyBottomSheetState extends State<CurrencyBottomSheet> {
       animation: widget.controller,
       builder: (context, _) {
         return SizedBox(
-          height: 350.h,
+          height: 360.h,
           child: Column(
             children: [
               const SizedBox(height: 15),

@@ -22,7 +22,7 @@ class CurrencyCard extends StatelessWidget {
     this.balanceAmount = '₦801,521.91',
     this.chipWidget,
     this.cardTypeWidget,
-    this.backgroundColor = const Color(0xFF1E1E1E),
+    this.backgroundColor = const Color(0xFF009933),
     this.textColor = const Color(0xFFFFFFFF),
   });
 
@@ -31,7 +31,7 @@ class CurrencyCard extends StatelessWidget {
     return Container(
       // height: 186,
       // width: 327,
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 15.h),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(20.r),

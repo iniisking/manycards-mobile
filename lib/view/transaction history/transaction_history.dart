@@ -17,7 +17,7 @@ class TransactionHistory extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: 24.w),
           child: Column(
             children: [
-              SizedBox(height: 30.h),
+              SizedBox(height: 20.h),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [

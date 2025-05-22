@@ -23,7 +23,7 @@ class NgnCardScreen extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: 24.w),
             child: Column(
               children: [
-                SizedBox(height: 30.h),
+                SizedBox(height: 20.h),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -74,7 +74,10 @@ class NgnCardScreen extends StatelessWidget {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => SubCard()),
+                          MaterialPageRoute(
+                            settings: const RouteSettings(name: '/subcard'),
+                            builder: (context) => const SubCard(),
+                          ),
                         );
                       },
                       icon: Padding(

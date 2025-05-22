@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:manycards/view/authentication/login_screen.dart';
-import 'package:manycards/view/authentication/verify_email.dart';
 import 'package:manycards/view/constants/text/text.dart';
 import 'package:manycards/view/constants/widgets/button.dart';
 import 'package:manycards/view/constants/widgets/colors.dart';
@@ -304,7 +303,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         onTap: () async {
                           if (_formKey.currentState?.validate() ?? false) {
                             try {
-                              debugPrint('Starting sign-up process...');
+                              debugPrint('Starting sign-up process in UI...');
                               final success = await authController.signUp(
                                 firstName: firstNameController.text.trim(),
                                 lastName: lastNameController.text.trim(),
@@ -312,25 +311,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 password: passwordController.text,
                               );
 
-                              debugPrint('Sign-up result: $success');
-                              if (success) {
-                                if (!mounted) return;
-
+                              debugPrint('Sign-up result in UI: $success');
+                              if (!success && mounted) {
                                 debugPrint(
-                                  'Navigating to verify email screen...',
-                                );
-                                // Clear the navigation stack and go to verify email screen
-                                Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (context) => const VerifyEmailScreen(),
-                                  ),
-                                  (route) => false,
-                                );
-                              } else if (mounted) {
-                                debugPrint(
-                                  'Sign-up failed: ${authController.error}',
+                                  'Sign-up failed in UI: ${authController.error}',
                                 );
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
@@ -340,7 +324,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 );
                               }
                             } catch (e) {
-                              debugPrint('Sign-up error: $e');
+                              debugPrint('Sign-up error in UI: $e');
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
@@ -391,8 +375,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 10.w),
                         child: GoogleSignInButton(
-                          onPressed: () {
-                            // Handle Google sign-in
+                          onPressed: () async {
+                            await authController.signInWithGoogle(context);
                           },
                         ),
                       ),

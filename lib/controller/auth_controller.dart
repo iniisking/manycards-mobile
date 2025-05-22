@@ -2,9 +2,9 @@
 // ignore_for_file: avoid_print
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:manycards/services/auth_service.dart';
 import 'package:manycards/services/firestore_service.dart';
+import 'package:flutter/material.dart';
 
 class AuthController extends ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -120,6 +120,7 @@ class AuthController extends ChangeNotifier {
     required String email,
     required String password,
   }) async {
+    debugPrint('Starting signUp process...');
     _isLoading = true;
     _error = '';
     _lastEmail = email;
@@ -170,9 +171,6 @@ class AuthController extends ChangeNotifier {
           // Ensure state is updated
           _isLoading = false;
           notifyListeners();
-
-          // Wait for state to be fully updated
-          await Future.delayed(const Duration(milliseconds: 500));
 
           debugPrint('Sign-up completed successfully, returning true');
           return true;
@@ -266,10 +264,15 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<void> resendVerificationEmail() async {
-    // TODO: Implement actual email resend
-    await Future.delayed(const Duration(seconds: 2));
-    _lastEmailSent = 'user@example.com';
-    notifyListeners();
+    try {
+      await _user?.sendEmailVerification();
+      _lastEmailSent = _user?.email ?? '';
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error resending verification email: $e');
+      _error = 'Failed to resend verification email';
+      notifyListeners();
+    }
   }
 
   // Reset password
@@ -307,6 +310,83 @@ class AuthController extends ChangeNotifier {
       _error = _getUserFriendlyError(e);
       notifyListeners();
       return false;
+    }
+  }
+
+  // Google sign-in
+  Future<void> signInWithGoogle(BuildContext context) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final userCredential = await _authService.signInWithGoogle();
+
+      if (userCredential == null) {
+        // User canceled the sign-in
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
+      if (userCredential.user != null) {
+        if (!userCredential.user!.emailVerified) {
+          await userCredential.user!.sendEmailVerification();
+          if (context.mounted) {
+            Navigator.pushReplacementNamed(context, '/verify-email');
+          }
+        } else {
+          if (context.mounted) {
+            Navigator.pushReplacementNamed(context, '/home');
+          }
+        }
+      }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage;
+      switch (e.code) {
+        case 'account-exists-with-different-credential':
+          errorMessage =
+              'An account already exists with the same email address but different sign-in credentials.';
+          break;
+        case 'invalid-credential':
+          errorMessage = 'The credential provided is invalid or has expired.';
+          break;
+        case 'operation-not-allowed':
+          errorMessage =
+              'Google sign-in is not enabled. Please contact support.';
+          break;
+        case 'user-disabled':
+          errorMessage = 'This user account has been disabled.';
+          break;
+        case 'user-not-found':
+          errorMessage = 'No user found with this email.';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Wrong password provided.';
+          break;
+        case 'network-request-failed':
+          errorMessage =
+              'Network error occurred. Please check your internet connection.';
+          break;
+        default:
+          errorMessage = 'An unexpected error occurred. Please try again.';
+      }
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMessage)));
+      }
+    } catch (e) {
+      debugPrint('Unexpected error during Google sign-in: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('An unexpected error occurred. Please try again.'),
+          ),
+        );
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 }

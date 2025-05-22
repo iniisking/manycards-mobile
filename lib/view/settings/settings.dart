@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:manycards/controller/auth_controller.dart';
-import 'package:manycards/view/authentication/login_screen.dart';
 import 'package:manycards/view/constants/text/text.dart';
 import 'package:manycards/view/constants/widgets/button.dart';
 import 'package:provider/provider.dart';
@@ -32,15 +31,6 @@ class Settings extends StatelessWidget {
                   text: 'Log Out',
                   onTap: () async {
                     await authController.signOut();
-                    if (context.mounted) {
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const LoginScreen(),
-                        ),
-                        (route) => false,
-                      );
-                    }
                   },
                 ),
               ],

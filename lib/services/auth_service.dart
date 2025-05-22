@@ -1,6 +1,8 @@
 // ignore_for_file: avoid_print
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -76,6 +78,44 @@ class AuthService {
       await _auth.sendPasswordResetEmail(email: email);
     } catch (e) {
       print('Password reset error: $e');
+      rethrow;
+    }
+  }
+
+  // Google sign-in
+  Future<UserCredential?> signInWithGoogle() async {
+    try {
+      debugPrint('Starting Google sign-in process...');
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+      if (googleUser == null) {
+        debugPrint('Google sign-in was canceled by user');
+        return null;
+      }
+
+      debugPrint('Got Google user: ${googleUser.email}');
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+      debugPrint('Got Google auth tokens');
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      debugPrint('Created Firebase credential');
+
+      final userCredential = await _auth.signInWithCredential(credential);
+      debugPrint(
+        'Successfully signed in with Google: ${userCredential.user?.email}',
+      );
+      return userCredential;
+    } catch (e, stackTrace) {
+      debugPrint('Google sign-in error: $e');
+      debugPrint('Stack trace: $stackTrace');
+      if (e is FirebaseAuthException) {
+        debugPrint('Firebase Auth Error Code: ${e.code}');
+        debugPrint('Firebase Auth Error Message: ${e.message}');
+      }
       rethrow;
     }
   }
