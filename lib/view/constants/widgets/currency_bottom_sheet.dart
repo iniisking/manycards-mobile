@@ -48,10 +48,9 @@ class _CurrencyBottomSheetState extends State<CurrencyBottomSheet> {
                           CustomTextWidget(
                             text: 'View your balance in:',
                             fontSize: 16.sp,
-                            color: Color(0xFFEAEAEA),
+                            color: const Color(0xFFEAEAEA),
                             fontWeight: FontWeight.bold,
                           ),
-                          // Add toggle button in the bottom sheet header too
                           GestureDetector(
                             onTap: () {
                               widget.controller.toggleBalanceVisibility();
@@ -67,92 +66,94 @@ class _CurrencyBottomSheetState extends State<CurrencyBottomSheet> {
                         ],
                       ),
                       SizedBox(height: 10.h),
-
-                      widget.controller.isLoading ||
-                              widget.controller.isRefreshing
-                          ? Expanded(
-                            child: ListView.builder(
-                              itemCount: 3,
-                              itemBuilder: (context, index) {
-                                return Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 8.h),
-                                  child: Shimmer.fromColors(
-                                    baseColor: Colors.grey[800]!,
-                                    highlightColor: Colors.grey[700]!,
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 25.w,
-                                          height: 25.h,
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                        SizedBox(width: 8.w),
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Container(
-                                              width: 40.w,
-                                              height: 16.h,
-                                              color: Colors.white,
-                                            ),
-                                            SizedBox(height: 4.h),
-                                            Container(
-                                              width: 100.w,
-                                              height: 12.h,
-                                              color: Colors.white,
-                                            ),
-                                          ],
-                                        ),
-                                        Spacer(),
-                                        Container(
-                                          width: 80.w,
-                                          height: 16.h,
+                      if (widget.controller.isLoading ||
+                          widget.controller.isRefreshing)
+                        Expanded(
+                          child: ListView.builder(
+                            itemCount: 3,
+                            itemBuilder: (context, index) {
+                              return Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8.h),
+                                child: Shimmer.fromColors(
+                                  baseColor: Colors.grey[800]!,
+                                  highlightColor: Colors.grey[700]!,
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 25.w,
+                                        height: 25.h,
+                                        decoration: const BoxDecoration(
                                           color: Colors.white,
+                                          shape: BoxShape.circle,
                                         ),
-                                        SizedBox(width: 8.w),
-                                        Container(
-                                          width: 20.w,
-                                          height: 20.h,
-                                          decoration: BoxDecoration(
+                                      ),
+                                      SizedBox(width: 8.w),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Container(
+                                            width: 40.w,
+                                            height: 16.h,
                                             color: Colors.white,
-                                            shape: BoxShape.circle,
                                           ),
+                                          SizedBox(height: 4.h),
+                                          Container(
+                                            width: 100.w,
+                                            height: 12.h,
+                                            color: Colors.white,
+                                          ),
+                                        ],
+                                      ),
+                                      const Spacer(),
+                                      Container(
+                                        width: 80.w,
+                                        height: 16.h,
+                                        color: Colors.white,
+                                      ),
+                                      SizedBox(width: 8.w),
+                                      Container(
+                                        width: 20.w,
+                                        height: 20.h,
+                                        decoration: const BoxDecoration(
+                                          color: Colors.white,
+                                          shape: BoxShape.circle,
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
-                                );
-                              },
-                            ),
-                          )
-                          : Expanded(
-                            child: ListView(
-                              children:
-                                  widget.controller.currencies
-                                      .map(
-                                        (currency) => CurrencyRowWidget(
-                                          currency: currency,
-                                          selectedCurrencyCode:
-                                              widget
-                                                  .controller
-                                                  .selectedCurrencyCode,
-                                          onCurrencySelected:
-                                              widget
-                                                  .controller
-                                                  .setSelectedCurrency,
-                                          isRefreshing:
-                                              widget.controller.isRefreshing,
-                                          isInitialLoading:
-                                              widget.controller.isLoading,
-                                        ),
-                                      )
-                                      .toList(),
-                            ),
+                                ),
+                              );
+                            },
                           ),
+                        )
+                      else
+                        Expanded(
+                          child: ListView(
+                            children:
+                                widget.controller.currencies
+                                    .map(
+                                      (currency) => CurrencyRowWidget(
+                                        currency: currency,
+                                        selectedCurrencyCode:
+                                            widget
+                                                .controller
+                                                .selectedCurrencyCode,
+                                        onCurrencySelected: (code) {
+                                          // Convert balances when currency is selected
+                                          widget.controller.setSelectedCurrency(
+                                            code,
+                                          );
+                                        },
+                                        isRefreshing:
+                                            widget.controller.isRefreshing,
+                                        isInitialLoading:
+                                            widget.controller.isLoading,
+                                      ),
+                                    )
+                                    .toList(),
+                          ),
+                        ),
                       SizedBox(height: 20.h),
                     ],
                   ),

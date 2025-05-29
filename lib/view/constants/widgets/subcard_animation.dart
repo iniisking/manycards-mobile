@@ -1,9 +1,26 @@
 // ignore_for_file: non_constant_identifier_names
 
-import 'dart:math';
+import 'dart:math' show pi;
 import 'package:flutter/material.dart';
-import 'package:manycards/model/card_info.dart';
 import 'package:manycards/view/constants/widgets/cards.dart';
+
+class CardInfo {
+  final String cardholderName;
+  final double balance;
+  final String currencySymbol;
+  final Color cardColor;
+  double positionY = 0.0;
+  double opacity = 1.0;
+  double rotate = 0.0;
+  double scale = 1.0;
+
+  CardInfo({
+    required this.cardholderName,
+    required this.balance,
+    required this.currencySymbol,
+    required this.cardColor,
+  });
+}
 
 class CardStackAnimation extends StatefulWidget {
   final double height;
@@ -40,28 +57,33 @@ class _CardStackAnimationState extends State<CardStackAnimation> {
     _cardInfoList = [
       CardInfo(
         cardholderName: "IniOluwa Longe",
-        balanceAmount: "₦801,521.91",
-        backgroundColor: Color(0xFFEA5EBE),
+        balance: 801521.91,
+        currencySymbol: "₦",
+        cardColor: Color(0xFFEA5EBE),
       ),
       CardInfo(
         cardholderName: "IniOluwa Longe",
-        balanceAmount: "₦425,600.00",
-        backgroundColor: Color(0xFF0A0A0A),
+        balance: 425600.00,
+        currencySymbol: "₦",
+        cardColor: Color(0xFF0A0A0A),
       ),
       CardInfo(
         cardholderName: "IniOluwa Longe",
-        balanceAmount: "₦650,320.50",
-        backgroundColor: Colors.pinkAccent,
+        balance: 650320.50,
+        currencySymbol: "₦",
+        cardColor: Colors.pinkAccent,
       ),
       CardInfo(
         cardholderName: "IniOluwa Longe",
-        balanceAmount: "₦975,432.25",
-        backgroundColor: Color(0xFF0B258A),
+        balance: 975432.25,
+        currencySymbol: "₦",
+        cardColor: Color(0xFF0B258A),
       ),
       CardInfo(
         cardholderName: "IniOluwa Longe",
-        balanceAmount: "₦123,450.75",
-        backgroundColor: Colors.red,
+        balance: 123450.75,
+        currencySymbol: "₦",
+        cardColor: Colors.red,
       ),
     ];
 
@@ -92,7 +114,6 @@ class _CardStackAnimationState extends State<CardStackAnimation> {
       widgetList.add(
         Positioned(
           top: cardInfo.positionY,
-          // Center the card horizontally
           left: 0,
           right: 0,
           child: Center(
@@ -106,11 +127,12 @@ class _CardStackAnimationState extends State<CardStackAnimation> {
               child: Opacity(
                 opacity: cardInfo.opacity,
                 child: SizedBox(
-                  width: screenWidth, // Use full screen width
+                  width: screenWidth,
                   child: CurrencyCard(
                     cardholderName: cardInfo.cardholderName,
-                    balanceAmount: cardInfo.balanceAmount,
-                    backgroundColor: cardInfo.backgroundColor,
+                    balance: cardInfo.balance,
+                    currencySymbol: cardInfo.currencySymbol,
+                    cardColor: cardInfo.cardColor,
                   ),
                 ),
               ),

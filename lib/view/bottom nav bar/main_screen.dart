@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:manycards/view/bottom%20nav%20bar/bottom_nav_bar.dart';
-import 'package:manycards/view/cards/ngn_card_screen.dart';
+import 'package:manycards/view/cards/card_screen.dart';
+
 import 'package:manycards/view/home/home_screen.dart';
 import 'package:manycards/view/settings/settings.dart';
 import 'package:manycards/view/transaction%20history/transaction_history.dart';
@@ -14,7 +15,6 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  bool _isOnSubCardScreen = false;
 
   // Create navigation keys for each tab that needs navigation
   final List<GlobalKey<NavigatorState>> _navigatorKeys = [
@@ -24,20 +24,9 @@ class _MainScreenState extends State<MainScreen> {
     GlobalKey<NavigatorState>(), // Settings
   ];
 
-  bool _shouldShowBottomNavBar() {
-    return !_isOnSubCardScreen;
-  }
-
   void _onItemTapped(int index) {
-    // If tapping the current tab, try to navigate to the root route
     if (index == _selectedIndex) {
       _navigatorKeys[index].currentState?.popUntil((route) => route.isFirst);
-      // Reset subcard screen state when going back to root
-      if (index == 1) {
-        setState(() {
-          _isOnSubCardScreen = false;
-        });
-      }
     }
     setState(() {
       _selectedIndex = index;
@@ -50,7 +39,6 @@ class _MainScreenState extends State<MainScreen> {
       onWillPop: () async {
         final isFirstRouteInCurrentTab =
             !await _navigatorKeys[_selectedIndex].currentState!.maybePop();
-
         if (isFirstRouteInCurrentTab) {
           return true;
         }
@@ -60,7 +48,6 @@ class _MainScreenState extends State<MainScreen> {
         extendBody: true,
         body: Stack(
           children: [
-            // Content area
             IndexedStack(
               index: _selectedIndex,
               children: [
@@ -70,12 +57,10 @@ class _MainScreenState extends State<MainScreen> {
                 _buildOffstageNavigator(3),
               ],
             ),
-            // Floating navigation bar overlay
-            if (_shouldShowBottomNavBar())
-              BottomNavBar(
-                selectedIndex: _selectedIndex,
-                onItemTapped: _onItemTapped,
-              ),
+            BottomNavBar(
+              selectedIndex: _selectedIndex,
+              onItemTapped: _onItemTapped,
+            ),
           ],
         ),
       ),
@@ -88,16 +73,6 @@ class _MainScreenState extends State<MainScreen> {
       child: Navigator(
         key: _navigatorKeys[index],
         onGenerateRoute: (RouteSettings settings) {
-          // Update state when route changes in the card tab
-          if (index == 1) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                setState(() {
-                  _isOnSubCardScreen = settings.name == '/subcard';
-                });
-              }
-            });
-          }
           return MaterialPageRoute(
             settings: settings,
             builder: (context) {
@@ -105,7 +80,7 @@ class _MainScreenState extends State<MainScreen> {
                 case 0:
                   return const HomeScreen();
                 case 1:
-                  return const NgnCardScreen();
+                  return const CardScreen();
                 case 2:
                   return const TransactionHistory();
                 case 3:

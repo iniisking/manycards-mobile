@@ -40,11 +40,11 @@ class Data {
 
   factory Data.fromJson(Map<String, dynamic> json) {
     return Data(
-      idToken: json['idToken'] ?? '',
-      refreshToken: json['refreshToken'] ?? '',
-      accessToken: json['accessToken'] ?? '',
-      expiresIn: json['expiresIn'] ?? 0,
-      tokenType: json['tokenType'] ?? '',
+      idToken: json['id_token'] ?? '',
+      refreshToken: json['refresh_token'] ?? '',
+      accessToken: json['access_token'] ?? '',
+      expiresIn: json['expires_in'] ?? 0,
+      tokenType: json['token_type'] ?? '',
       email: json['email'] ?? '',
     );
   }

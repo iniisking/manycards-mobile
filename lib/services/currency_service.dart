@@ -1,35 +1,50 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import '../config/api_endpoints.dart';
+import '../model/currency/req/convert_currency_req.dart';
+import '../model/currency/res/convert_currency_res.dart';
+import '../model/currency/res/get_total_card_balance_res.dart';
+import 'base_api_service.dart';
 
-class CurrencyService {
-  static const String apiKey = '54ca4274b22a9d03e0995a72';
-  static const String baseUrl = 'https://v6.exchangerate-api.com/v6/$apiKey';
+class CurrencyService extends BaseApiService {
+  CurrencyService({required super.client}) : super();
 
-  // Get the latest exchange rates with a specific base currency
-  Future<Map<String, dynamic>> getLatestRates(String baseCurrency) async {
-    final response = await http.get(Uri.parse('$baseUrl/latest/$baseCurrency'));
+  Future<GetTotalBalanceRes> getTotalBalance() async {
+    try {
+      final response = await get(
+        ApiEndpoints.getTotalBalance,
+        requiresAuth: true,
+      );
 
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      throw Exception('Failed to load exchange rates');
+      return GetTotalBalanceRes.fromJson(response);
+    } catch (e) {
+      throw Exception('Error getting total balance: $e');
     }
   }
 
-  // Convert a specific amount from one currency to another
-  Future<double> convertCurrency(
+  Future<ConvertCurrencyRes> convertCurrency(
     double amount,
     String fromCurrency,
     String toCurrency,
   ) async {
-    final rates = await getLatestRates(fromCurrency);
+    try {
+      final request = ConvertCurrencyReq(
+        amount: amount,
+        fromCurrency: fromCurrency,
+        toCurrency: toCurrency,
+      );
 
-    // API response format varies by provider - adjust accordingly
-    final conversionRates = rates['conversion_rates'];
-    if (conversionRates != null && conversionRates[toCurrency] != null) {
-      return amount * conversionRates[toCurrency];
-    } else {
-      throw Exception('Currency not found');
+      final response = await post(
+        ApiEndpoints.convertCurrency,
+        body: request.toJson(),
+        requiresAuth: true,
+      );
+
+      return ConvertCurrencyRes.fromJson(response);
+    } catch (e) {
+      throw Exception('Error converting currency: $e');
     }
+  }
+
+  void dispose() {
+    client.close();
   }
 }

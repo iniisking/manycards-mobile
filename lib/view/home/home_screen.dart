@@ -6,7 +6,7 @@ import 'package:manycards/view/constants/text/text.dart';
 import 'package:manycards/view/constants/widgets/colors.dart';
 import 'package:manycards/view/constants/widgets/currency_bottom_sheet.dart';
 import 'package:manycards/view/constants/widgets/button.dart';
-import 'package:manycards/view/constants/widgets/transaction_row_widget.dart';
+import 'package:manycards/view/constants/widgets/shimmers.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../controller/currency_controller.dart';
@@ -14,6 +14,7 @@ import '../../controller/auth_controller.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
+
   Future<void> _handleRefresh(
     BuildContext context,
     CurrencyController controller,
@@ -21,7 +22,6 @@ class HomeScreen extends StatelessWidget {
     try {
       await controller.refreshBalances();
     } catch (e) {
-      // Handle error if needed
       debugPrint('Refresh error: $e');
     }
   }
@@ -56,7 +56,7 @@ class HomeScreen extends StatelessWidget {
           onRefresh: () => _handleRefresh(context, controller),
           color: actionButtonColor,
           backgroundColor: fisrtHeaderTextColor,
-          height: 50.h,
+          height: 70.h,
           animSpeedFactor: 3,
           showChildOpacityTransition: false,
           child: SingleChildScrollView(
@@ -146,14 +146,17 @@ class HomeScreen extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 controller.isBalanceVisible
-                                    ? CustomTextWidget(
-                                      text:
-                                          controller
-                                              .selectedCurrency
-                                              .formattedBalance,
-                                      fontSize: 34.sp,
-                                      fontWeight: FontWeight.bold,
-                                      color: fisrtHeaderTextColor,
+                                    ? Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        CustomTextWidget(
+                                          text:
+                                              '${controller.selectedCurrency.symbol}${controller.totalBalance.toStringAsFixed(2)}',
+                                          fontSize: 32.sp,
+                                          fontWeight: FontWeight.bold,
+                                          color: fisrtHeaderTextColor,
+                                        ),
+                                      ],
                                     )
                                     : CustomTextWidget(
                                       text: '* * * * * *',
@@ -163,7 +166,6 @@ class HomeScreen extends StatelessWidget {
                                     ),
                               ],
                             ),
-
                         Icon(
                           Icons.keyboard_arrow_down_rounded,
                           size: 25.sp,
@@ -253,74 +255,33 @@ class HomeScreen extends StatelessWidget {
                     ],
                   ),
                   SizedBox(height: 25.h),
-                  TransactionRowWidget(
-                    leadingIcon: Icon(
-                      Icons.attach_money,
-                      color: fisrtHeaderTextColor,
-                      size: 20.sp,
-                    ),
-                    title: 'Card Funding',
-                    subtitle: 'Feb 3 at 5:17 PM',
-                    description: 'You funded your USD Card',
-                    amount:
-                        controller.isBalanceVisible
-                            ? '+\$500.00'
-                            : '* * * * * *',
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: 5,
+                    itemBuilder: (context, index) {
+                      return TransactionRowShimmer();
+                    },
                   ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.h),
-                    child: Divider(thickness: 1.h, color: actionButtonColor),
-                  ),
-                  TransactionRowWidget(
-                    leadingIcon: Icon(
-                      Icons.attach_money,
-                      color: fisrtHeaderTextColor,
-                      size: 20.sp,
-                    ),
-                    title: 'Card Funding',
-                    subtitle: 'Feb 3 at 5:17 PM',
-                    description: 'You funded your USD Card',
-                    amount:
-                        controller.isBalanceVisible
-                            ? '+\$500.00'
-                            : '* * * * * *',
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.h),
-                    child: Divider(thickness: 1.h, color: actionButtonColor),
-                  ),
-                  TransactionRowWidget(
-                    leadingIcon: Icon(
-                      Icons.attach_money,
-                      color: fisrtHeaderTextColor,
-                      size: 20.sp,
-                    ),
-                    title: 'Card Funding',
-                    subtitle: 'Feb 3 at 5:17 PM',
-                    description: 'You funded your USD Card',
-                    amount:
-                        controller.isBalanceVisible
-                            ? '+\$500.00'
-                            : '* * * * * *',
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.h),
-                    child: Divider(thickness: 1.h, color: actionButtonColor),
-                  ),
-                  TransactionRowWidget(
-                    leadingIcon: Icon(
-                      Icons.attach_money,
-                      color: fisrtHeaderTextColor,
-                      size: 20.sp,
-                    ),
-                    title: 'Card Funding',
-                    subtitle: 'Feb 3 at 5:17 PM',
-                    description: 'You funded your USD Card',
-                    amount:
-                        controller.isBalanceVisible
-                            ? '+\$500.00'
-                            : '* * * * * *',
-                  ),
+
+                  // TransactionRowWidget(
+                  //   leadingIcon: Icon(
+                  //     Icons.attach_money,
+                  //     color: fisrtHeaderTextColor,
+                  //     size: 20.sp,
+                  //   ),
+                  //   title: 'Card Funding',
+                  //   subtitle: 'Feb 3 at 5:17 PM',
+                  //   description: 'You funded your USD Card',
+                  //   amount:
+                  //       controller.isBalanceVisible
+                  //           ? '+\$500.00'
+                  //           : '* * * * * *',
+                  // ),
+                  // Padding(
+                  //   padding: EdgeInsets.symmetric(vertical: 8.h),
+                  //   child: Divider(thickness: 1.h, color: actionButtonColor),
+                  // ),
                 ],
               ),
             ),

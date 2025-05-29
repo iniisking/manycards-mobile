@@ -99,7 +99,11 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         },
         keyboardType: TextInputType.number,
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.w700),
+        style: TextStyle(
+          fontSize: 17.sp,
+          fontWeight: FontWeight.w700,
+          color: fisrtHeaderTextColor,
+        ),
         decoration: InputDecoration(
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),

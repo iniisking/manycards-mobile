@@ -38,9 +38,9 @@ class SwiperBuilder extends StatelessWidget {
 }
 
 List imagepath = [
-  CurrencyCard(backgroundColor: Colors.orange),
-  CurrencyCard(backgroundColor: Colors.green),
-  CurrencyCard(backgroundColor: Colors.black),
-  CurrencyCard(backgroundColor: Colors.red),
-  CurrencyCard(backgroundColor: Colors.purple),
+  CurrencyCard(cardColor: Colors.orange, balance: 1000.0, currencySymbol: '\$'),
+  CurrencyCard(cardColor: Colors.green, balance: 500.0, currencySymbol: '£'),
+  CurrencyCard(cardColor: Colors.black, balance: 50000.0, currencySymbol: '₦'),
+  CurrencyCard(cardColor: Colors.red, balance: 2000.0, currencySymbol: '\$'),
+  CurrencyCard(cardColor: Colors.purple, balance: 1000.0, currencySymbol: '£'),
 ];

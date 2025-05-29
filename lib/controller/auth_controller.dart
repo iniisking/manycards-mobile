@@ -3,17 +3,25 @@ import 'package:manycards/model/auth/req/confirm_sign_up_req.dart';
 import 'package:manycards/model/auth/req/sign_up_req.dart';
 import 'package:manycards/model/auth/res/login_res.dart';
 import 'package:manycards/services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class AuthController extends ChangeNotifier {
   final AuthService _authService;
+  final SharedPreferences _prefs;
   bool _isLoading = false;
   bool _isLoggedIn = false;
   bool _isEmailVerified = false;
   String? _error;
   LoginRes? _user;
   String? _lastEmail;
+  String? _firstName;
 
-  AuthController(this._authService) {
+  static const String _firstNameKey = 'user_first_name';
+
+  AuthController(this._authService, {SharedPreferences? prefs})
+    : _prefs =
+          prefs ?? (throw Exception('SharedPreferences must be provided')) {
     _initializeAuthState();
   }
 
@@ -24,8 +32,38 @@ class AuthController extends ChangeNotifier {
   String? get error => _error;
   LoginRes? get user => _user;
   String? get lastEmail => _lastEmail;
-  String get firstName =>
-      user?.data.email.split('@')[0].split('.')[0].capitalize() ?? 'User';
+  String get firstName => _firstName ?? 'User';
+
+  // Add a public getter for the auth token
+  Future<String?> get authToken async => await _authService.getAuthToken();
+
+  // Decode JWT token
+  Map<String, dynamic>? _decodeToken(String token) {
+    try {
+      debugPrint('Attempting to decode token...');
+      final parts = token.split('.');
+      if (parts.length != 3) {
+        debugPrint(
+          'Invalid token format: expected 3 parts, got ${parts.length}',
+        );
+        return null;
+      }
+
+      // Decode the payload (second part)
+      final payload = parts[1];
+      final normalized = base64Url.normalize(payload);
+      final decoded = utf8.decode(base64Url.decode(normalized));
+      final claims = json.decode(decoded) as Map<String, dynamic>;
+
+      debugPrint('Token claims: $claims');
+      debugPrint('Given name from token: ${claims['given_name']}');
+
+      return claims;
+    } catch (e) {
+      debugPrint('Error decoding token: $e');
+      return null;
+    }
+  }
 
   // Initialize auth state
   Future<void> _initializeAuthState() async {
@@ -33,9 +71,15 @@ class AuthController extends ChangeNotifier {
     try {
       _isLoggedIn = await _authService.isLoggedIn();
       if (_isLoggedIn) {
-        // TODO: Implement token validation and email verification check
-        _isEmailVerified =
-            true; // This should be set based on actual verification status
+        final token = await _authService.getAuthToken();
+        if (token != null) {
+          final claims = _decodeToken(token);
+          if (claims != null) {
+            _firstName = claims['given_name'] as String?;
+            debugPrint('Loaded first name from token: $_firstName');
+          }
+        }
+        _isEmailVerified = true;
       }
     } catch (e) {
       _setError(e.toString());
@@ -66,6 +110,10 @@ class AuthController extends ChangeNotifier {
       final response = await _authService.signUp(request);
       if (response.success) {
         _lastEmail = email;
+        _firstName = nameParts[0];
+        // Store first name in SharedPreferences
+        await _prefs.setString(_firstNameKey, _firstName!);
+        debugPrint('Stored first name in SharedPreferences: $_firstName');
         return true;
       } else {
         _setError(response.message);
@@ -92,6 +140,23 @@ class AuthController extends ChangeNotifier {
         _user = response;
         _isLoggedIn = true;
         _isEmailVerified = true;
+
+        // Extract first name from ID token
+        final token = response.data.idToken;
+        debugPrint('Login successful, token: $token');
+
+        if (token.isNotEmpty) {
+          final claims = _decodeToken(token);
+          if (claims != null) {
+            _firstName = claims['given_name'] as String?;
+            debugPrint('Extracted first name from token: $_firstName');
+          } else {
+            debugPrint('Failed to decode token or extract given_name');
+          }
+        } else {
+          debugPrint('Token is empty');
+        }
+
         notifyListeners();
         return true;
       } else {
@@ -162,7 +227,11 @@ class AuthController extends ChangeNotifier {
     _setLoading(true);
     try {
       await _authService.logout();
+      // Clear first name from SharedPreferences
+      await _prefs.remove(_firstNameKey);
+      debugPrint('Cleared first name from SharedPreferences');
       _user = null;
+      _firstName = null;
       _isLoggedIn = false;
       _isEmailVerified = false;
       notifyListeners();
@@ -225,6 +294,7 @@ class AuthController extends ChangeNotifier {
 
 extension StringExtension on String {
   String capitalize() {
+    if (isEmpty) return '';
     return "${this[0].toUpperCase()}${substring(1).toLowerCase()}";
   }
 }

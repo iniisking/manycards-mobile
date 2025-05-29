@@ -7,10 +7,11 @@ class CurrencyCard extends StatelessWidget {
   final String cardholderName;
   final String expiryDate;
   final String cardBalance;
-  final String balanceAmount;
+  final double balance;
+  final String currencySymbol;
   final Widget? chipWidget;
   final Widget? cardTypeWidget;
-  final Color backgroundColor;
+  final Color cardColor;
   final Color textColor;
 
   const CurrencyCard({
@@ -19,12 +20,17 @@ class CurrencyCard extends StatelessWidget {
     this.cardholderName = 'IniOluwa Longe',
     this.expiryDate = '08/27',
     this.cardBalance = 'Card Balance',
-    this.balanceAmount = '₦801,521.91',
+    this.balance = 0.0,
+    this.currencySymbol = '₦',
     this.chipWidget,
     this.cardTypeWidget,
-    this.backgroundColor = const Color(0xFF009933),
+    this.cardColor = const Color(0xFF1E1E1E),
     this.textColor = const Color(0xFFFFFFFF),
   });
+
+  String get formattedBalance {
+    return '$currencySymbol${balance.toStringAsFixed(2)}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +39,7 @@ class CurrencyCard extends StatelessWidget {
       // width: 327,
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 15.h),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: cardColor,
         borderRadius: BorderRadius.circular(20.r),
       ),
       child: Column(
@@ -59,7 +65,7 @@ class CurrencyCard extends StatelessWidget {
               ),
               SizedBox(height: 4.h),
               CustomTextWidget(
-                text: balanceAmount,
+                text: formattedBalance,
                 fontSize: 30,
                 color: textColor,
                 fontWeight: FontWeight.bold,

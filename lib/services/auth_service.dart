@@ -11,7 +11,7 @@ import 'package:manycards/services/storage_service.dart';
 
 class AuthService extends BaseApiService {
   final StorageService _storageService;
-  static const String _tokenKey = 'cognito_id_token';
+  static const String _tokenKey = 'cognito_access_token';
 
   AuthService({required super.client, StorageService? storageService})
     : _storageService = storageService ?? StorageService();
@@ -73,7 +73,7 @@ class AuthService extends BaseApiService {
     final loginResponse = LoginRes.fromJson(response);
 
     if (loginResponse.success) {
-      await setAuthToken(loginResponse.data.idToken);
+      await setAuthToken(loginResponse.data.accessToken);
     }
 
     return loginResponse;

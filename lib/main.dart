@@ -2,26 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:manycards/controller/currency_controller.dart';
 import 'package:manycards/controller/auth_controller.dart';
+import 'package:manycards/controller/card_controller.dart';
 import 'package:manycards/services/auth_service.dart';
 import 'package:manycards/services/storage_service.dart';
 import 'package:manycards/view/authentication/auth_wrapper.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
+
+  // Initialize SharedPreferences
+  final prefs = await SharedPreferences.getInstance();
+
+  runApp(MyApp(prefs: prefs));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final SharedPreferences prefs;
+
+  const MyApp({super.key, required this.prefs});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => CurrencyController()),
         Provider<StorageService>(create: (_) => StorageService()),
         Provider<AuthService>(
           create:
@@ -31,13 +38,25 @@ class MyApp extends StatelessWidget {
               ),
         ),
         ChangeNotifierProxyProvider<AuthService, AuthController>(
-          create: (context) => AuthController(context.read<AuthService>()),
+          create:
+              (context) =>
+                  AuthController(context.read<AuthService>(), prefs: prefs),
           update:
               (_, authService, controller) =>
-                  controller ?? AuthController(authService),
+                  controller ?? AuthController(authService, prefs: prefs),
         ),
+        ChangeNotifierProvider(
+          create:
+              (context) => CurrencyController(
+                context.read<AuthController>(),
+                http.Client(),
+              ),
+        ),
+        ChangeNotifierProvider(create: (_) => CardController()),
       ],
       child: ScreenUtilInit(
+        ensureScreenSize: true,
+        useInheritedMediaQuery: true,
         designSize: const Size(375, 812),
         minTextAdapt: true,
         splitScreenMode: true,
