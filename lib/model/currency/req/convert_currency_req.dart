@@ -12,8 +12,8 @@ class ConvertCurrencyReq {
   Map<String, dynamic> toJson() {
     return {
       'amount': amount,
-      'fromCurrency': fromCurrency,
-      'toCurrency': toCurrency,
+      'from_currency': fromCurrency,
+      'to_currency': toCurrency,
     };
   }
 }

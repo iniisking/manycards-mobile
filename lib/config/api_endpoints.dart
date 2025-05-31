@@ -12,6 +12,8 @@ class ApiEndpoints {
       'https://dlyu9xdhg9.execute-api.us-east-1.amazonaws.com/prod/confirm-forgot-password';
 
   //card endpoints
+  static const String getAllCards =
+      'https://0o9v8c0su1.execute-api.us-east-1.amazonaws.com/prod/list-all-cards';
   static const String generateCard =
       'https://0o9v8c0su1.execute-api.us-east-1.amazonaws.com/prod/generate-card';
   static const String getCard =

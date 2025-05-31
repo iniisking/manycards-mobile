@@ -115,10 +115,10 @@ class HomeScreen extends StatelessWidget {
                   SizedBox(height: 8.h),
                   Row(
                     children: [
-                      controller.selectedCurrency.flag,
+                      controller.selectedCurrency['flag'] as Widget,
                       SizedBox(width: 8.w),
                       CustomTextWidget(
-                        text: controller.selectedCurrency.code,
+                        text: controller.selectedCurrency['code'] as String,
                         fontSize: 16.sp,
                         color: fisrtHeaderTextColor,
                       ),
@@ -150,8 +150,9 @@ class HomeScreen extends StatelessWidget {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         CustomTextWidget(
-                                          text:
-                                              '${controller.selectedCurrency.symbol}${controller.totalBalance.toStringAsFixed(2)}',
+                                          text: controller.getFormattedBalance(
+                                            controller.selectedCurrencyCode,
+                                          ),
                                           fontSize: 32.sp,
                                           fontWeight: FontWeight.bold,
                                           color: fisrtHeaderTextColor,

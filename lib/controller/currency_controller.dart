@@ -2,10 +2,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:manycards/services/currency_service.dart';
-import '../model/currency_model.dart';
+import '../model/currency/res/get_total_card_balance_res.dart';
 import '../controller/auth_controller.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'package:manycards/gen/assets.gen.dart';
+import 'package:manycards/utils/number_formatter.dart';
 
 class CurrencyController extends ChangeNotifier {
   // --- Visibility Control ---
@@ -21,23 +23,43 @@ class CurrencyController extends ChangeNotifier {
   final AuthController _authController;
   final http.Client _httpClient;
   CurrencyService? _service;
-  final List<CurrencyModel> _currencies =
-      CurrencyModel.getAvailableCurrencies();
+
+  // --- Available Currencies ---
+  final List<Map<String, dynamic>> _availableCurrencies = [
+    {
+      'code': 'NGN',
+      'name': 'Nigerian Naira',
+      'symbol': '₦',
+      'flag': Assets.images.nigerianFlag.image(height: 25, width: 25),
+    },
+    {
+      'code': 'USD',
+      'name': 'United States Dollar',
+      'symbol': '\$',
+      'flag': Assets.images.usFlag.image(height: 25, width: 25),
+    },
+    {
+      'code': 'GBP',
+      'name': 'Great British Pound',
+      'symbol': '£',
+      'flag': Assets.images.ukFlag.image(height: 25, width: 25),
+    },
+  ];
 
   // --- Selected Currency ---
   String _selectedCurrencyCode = 'NGN';
   String get selectedCurrencyCode => _selectedCurrencyCode;
 
-  CurrencyModel get selectedCurrency {
-    return _currencies.firstWhere(
-      (currency) => currency.code == _selectedCurrencyCode,
-      orElse: () => _currencies.first,
+  Map<String, dynamic> get selectedCurrency {
+    return _availableCurrencies.firstWhere(
+      (currency) => currency['code'] == _selectedCurrencyCode,
+      orElse: () => _availableCurrencies.first,
     );
   }
 
   void setSelectedCurrency(String code) {
     if (_selectedCurrencyCode != code &&
-        _currencies.any((currency) => currency.code == code)) {
+        _availableCurrencies.any((currency) => currency['code'] == code)) {
       _selectedCurrencyCode = code;
       notifyListeners(); // Notify immediately for selected currency change
       _updateCurrencyBalances(); // Trigger balance update after selecting currency
@@ -45,7 +67,7 @@ class CurrencyController extends ChangeNotifier {
   }
 
   // --- Currency List Getter ---
-  List<CurrencyModel> get currencies => _currencies;
+  List<Map<String, dynamic>> get currencies => _availableCurrencies;
 
   // --- Loading States ---
   bool _isLoading = true;
@@ -58,15 +80,89 @@ class CurrencyController extends ChangeNotifier {
   double _totalBalance = 0.0;
   double get totalBalance => _totalBalance;
 
+  // --- Currency Balances ---
+  final Map<String, double> _currencyBalances = {};
+  double getBalanceForCurrency(String code) => _currencyBalances[code] ?? 0.0;
+
+  String getFormattedBalance(String code) {
+    final currency = _availableCurrencies.firstWhere(
+      (c) => c['code'] == code,
+      orElse: () => _availableCurrencies.first,
+    );
+    final balance = _currencyBalances[code] ?? 0.0;
+    return NumberFormatter.formatBalanceWithSymbol(
+      balance,
+      currency['symbol'] as String,
+    );
+  }
+
+  // --- Card Balances ---
+  List<CardBalance> _cardBalances = [];
+  List<CardBalance> get cardBalances => _cardBalances;
+
+  // Get balance for a specific card
+  CardBalance? getCardBalance(String cardId) {
+    try {
+      return _cardBalances.firstWhere((card) => card.cardId == cardId);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Get formatted balance for a specific card
+  String getFormattedCardBalance(String cardId) {
+    final card = getCardBalance(cardId);
+    if (card == null) return '₦0.00';
+
+    final currency = _availableCurrencies.firstWhere(
+      (c) => c['code'] == card.originalCurrency,
+      orElse: () => _availableCurrencies.first,
+    );
+    return NumberFormatter.formatBalanceWithSymbol(
+      card.originalBalance,
+      currency['symbol'] as String,
+    );
+  }
+
+  // --- Reset State ---
+  void reset() {
+    _totalBalance = 0.0;
+    _currencyBalances.clear();
+    _cardBalances.clear();
+    _isLoading = false;
+    _isRefreshing = false;
+    notifyListeners();
+    debugPrint('CurrencyController state reset');
+  }
+
   // --- Constructor ---
   CurrencyController(this._authController, this._httpClient) {
     _initializeService(); // Initialize service first
+    // Listen to auth state changes
+    _authController.addListener(_onAuthStateChanged);
+  }
+
+  void _onAuthStateChanged() {
+    if (!_authController.isLoggedIn) {
+      reset();
+    } else {
+      initializeBalances();
+    }
+  }
+
+  @override
+  void dispose() {
+    _authController.removeListener(_onAuthStateChanged);
+    super.dispose();
   }
 
   // --- Initialize Service ---
   Future<void> _initializeService() async {
     debugPrint('Attempting to initialize CurrencyService...');
-    _service = CurrencyService(client: _httpClient);
+    _service = CurrencyService(
+      client: _httpClient,
+      authService: _authController.authService,
+    );
     debugPrint('CurrencyService initialized.');
     // Now initialize balances
     debugPrint('Calling initializeBalances...');
@@ -75,32 +171,29 @@ class CurrencyController extends ChangeNotifier {
 
   // --- Initialization --- // Called on app startup
   Future<void> initializeBalances() async {
-    // Only proceed if service is initialized and not already refreshing
     if (_service == null || _isRefreshing) {
       if (_service == null)
         debugPrint('Service not initialized in initializeBalances.');
-      // We are already in an initializing state (_isLoading is true by default),
-      // so we just return if the service isn't ready or if refreshing.
       return;
     }
 
-    _isLoading = true; // Set loading state
+    _isLoading = true;
     notifyListeners();
 
     try {
-      // Get total balance from backend
-      debugPrint(
-        'Fetching total balance in initializeBalances...',
-      ); // Add this debug print
       final totalBalanceRes = await _service!.getTotalBalance();
 
       if (totalBalanceRes.success) {
-        _totalBalance = totalBalanceRes.data.totalBalance.toDouble();
-        // Now update all currency balances based on the total balance
+        _totalBalance = totalBalanceRes.data.totalBalance;
+        // Store card balances
+        _cardBalances = totalBalanceRes.data.cardBalances;
+        debugPrint('Card balances updated: ${_cardBalances.length} cards');
+        // Set NGN balance directly from total balance
+        _currencyBalances['NGN'] = _totalBalance;
+        // Now update other currency balances based on the total balance
         await _updateCurrencyBalances();
       } else {
         debugPrint('Failed to fetch total balance: ${totalBalanceRes.message}');
-        // Optionally set a default or show an error message
       }
     } catch (e) {
       debugPrint('Error initializing balances: $e');
@@ -114,10 +207,8 @@ class CurrencyController extends ChangeNotifier {
   Future<void> refreshBalances() async {
     if (_isRefreshing) return;
 
-    // Only proceed if service is initialized
     if (_service == null) {
       debugPrint('Service not initialized in refreshBalances.');
-      // Attempt to re-initialize service if needed, but don't block refresh
       _initializeService();
       _isRefreshing = false;
       notifyListeners();
@@ -128,21 +219,23 @@ class CurrencyController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Get total balance from backend
       final totalBalanceRes = await _service!.getTotalBalance();
 
       if (totalBalanceRes.success) {
-        _totalBalance = totalBalanceRes.data.totalBalance.toDouble();
-        // Now update all currency balances based on the total balance
+        _totalBalance = totalBalanceRes.data.totalBalance;
+        // Update card balances
+        _cardBalances = totalBalanceRes.data.cardBalances;
+        debugPrint('Card balances updated: ${_cardBalances.length} cards');
+        // Set NGN balance directly from total balance
+        _currencyBalances['NGN'] = _totalBalance;
+        // Now update other currency balances based on the total balance
         await _updateCurrencyBalances();
       } else {
         debugPrint(
           'Failed to refresh total balance: ${totalBalanceRes.message}',
         );
-        // Optionally show an error message
       }
 
-      // delay so shimmer effect is noticeable
       await Future.delayed(const Duration(milliseconds: 600));
     } catch (e) {
       debugPrint('Error refreshing balances: $e');
@@ -154,50 +247,37 @@ class CurrencyController extends ChangeNotifier {
 
   // --- Update Currency Balances by Converting Total Balance ---
   Future<void> _updateCurrencyBalances() async {
-    // Ensure service is initialized and we have a total balance
     if (_service == null) {
       debugPrint('CurrencyService not initialized, cannot update balances.');
       return;
     }
 
-    // Total balance can be zero, we can still convert zero.
-    // if (_totalBalance <= 0) {
-    //   debugPrint('Total balance is zero or negative, cannot convert.');
-    //   return;
-    // }
-
     try {
-      // Iterate through all available currencies
-      for (var currency in _currencies) {
-        // Convert the total balance to the current currency's code
-        // Use the total balance fetched from the backend, and NGN as the base
+      // Convert total balance to other currencies (USD and GBP)
+      for (var currency in _availableCurrencies) {
+        final code = currency['code'] as String;
+        if (code == 'NGN') continue; // Skip NGN as it's already set
+
         final convertRes = await _service!.convertCurrency(
-          _totalBalance, // Use total balance
-          'NGN', // Assuming NGN is the base currency for conversion
-          currency.code,
+          _totalBalance,
+          'NGN',
+          code,
         );
 
         if (convertRes.success) {
-          // Update the currency model's balance with the converted amount
-          currency.balance = convertRes.data.convertedAmount;
-          // Format the balance to include the symbol and correct decimal places
-          currency.formatBalance();
+          _currencyBalances[code] = convertRes.data.convertedAmount;
           debugPrint(
-            'Converted total balance to ${currency.code}: ${currency.formattedBalance}',
+            'Converted total balance to $code: ${convertRes.data.convertedAmount}',
           );
-          // Notify after each currency is updated to incrementally update UI
           notifyListeners();
         } else {
           debugPrint(
-            'Failed to convert total balance to ${currency.code}: ${convertRes.message}',
+            'Failed to convert total balance to $code: ${convertRes.message}',
           );
-          // Optionally handle conversion failure for a specific currency
         }
       }
     } catch (e) {
       debugPrint('Error converting and updating balances: $e');
-      // Optionally handle the overall error
     }
-    // No need for final notifyListeners here as we notify in the loop
   }
 }

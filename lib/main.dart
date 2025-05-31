@@ -8,6 +8,7 @@ import 'package:manycards/controller/currency_controller.dart';
 import 'package:manycards/controller/auth_controller.dart';
 import 'package:manycards/controller/card_controller.dart';
 import 'package:manycards/services/auth_service.dart';
+import 'package:manycards/services/card_service.dart';
 import 'package:manycards/services/storage_service.dart';
 import 'package:manycards/view/authentication/auth_wrapper.dart';
 
@@ -37,13 +38,24 @@ class MyApp extends StatelessWidget {
                 storageService: context.read<StorageService>(),
               ),
         ),
-        ChangeNotifierProxyProvider<AuthService, AuthController>(
+        Provider<CardService>(
           create:
-              (context) =>
-                  AuthController(context.read<AuthService>(), prefs: prefs),
+              (context) => CardService(
+                client: http.Client(),
+                authService: context.read<AuthService>(),
+              ),
+        ),
+        ChangeNotifierProxyProvider2<AuthService, CardService, AuthController>(
+          create:
+              (context) => AuthController(
+                context.read<AuthService>(),
+                context.read<CardService>(),
+                prefs: prefs,
+              ),
           update:
-              (_, authService, controller) =>
-                  controller ?? AuthController(authService, prefs: prefs),
+              (_, authService, cardService, controller) =>
+                  controller ??
+                  AuthController(authService, cardService, prefs: prefs),
         ),
         ChangeNotifierProvider(
           create:
@@ -52,7 +64,21 @@ class MyApp extends StatelessWidget {
                 http.Client(),
               ),
         ),
-        ChangeNotifierProvider(create: (_) => CardController()),
+        ChangeNotifierProxyProvider2<
+          CurrencyController,
+          CardService,
+          CardController
+        >(
+          create:
+              (context) => CardController(
+                context.read<CurrencyController>(),
+                context.read<CardService>(),
+              ),
+          update:
+              (_, currencyController, cardService, cardController) =>
+                  cardController ??
+                  CardController(currencyController, cardService),
+        ),
       ],
       child: ScreenUtilInit(
         ensureScreenSize: true,

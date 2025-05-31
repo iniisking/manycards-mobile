@@ -22,7 +22,7 @@ class GetTotalBalanceRes {
 }
 
 class Data {
-  final int totalBalance;
+  final double totalBalance;
   final String targetCurrency;
   final int cardCount;
   final List<CardBalance> cardBalances;
@@ -36,11 +36,11 @@ class Data {
 
   factory Data.fromJson(Map<String, dynamic> json) {
     return Data(
-      totalBalance: json['totalBalance'] ?? 0,
-      targetCurrency: json['targetCurrency'] ?? '',
-      cardCount: json['cardCount'] ?? 0,
+      totalBalance: (json['total_balance'] ?? 0.0).toDouble(),
+      targetCurrency: json['target_currency'] ?? '',
+      cardCount: json['card_count'] ?? 0,
       cardBalances:
-          (json['cardBalances'] as List<dynamic>?)
+          (json['card_balances'] as List<dynamic>?)
               ?.map((e) => CardBalance.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
@@ -49,10 +49,10 @@ class Data {
 }
 
 class CardBalance {
-  final dynamic cardId;
-  final int originalBalance;
+  final String cardId;
+  final double originalBalance;
   final String originalCurrency;
-  final int convertedBalance;
+  final double convertedBalance;
   final String targetCurrency;
 
   CardBalance({
@@ -65,11 +65,11 @@ class CardBalance {
 
   factory CardBalance.fromJson(Map<String, dynamic> json) {
     return CardBalance(
-      cardId: json['cardId'],
-      originalBalance: json['originalBalance'] ?? 0,
-      originalCurrency: json['originalCurrency'] ?? '',
-      convertedBalance: json['convertedBalance'] ?? 0,
-      targetCurrency: json['targetCurrency'] ?? '',
+      cardId: json['card_id'] ?? '',
+      originalBalance: (json['original_balance'] ?? 0.0).toDouble(),
+      originalCurrency: json['original_currency'] ?? '',
+      convertedBalance: (json['converted_balance'] ?? 0.0).toDouble(),
+      targetCurrency: json['target_currency'] ?? '',
     );
   }
 }

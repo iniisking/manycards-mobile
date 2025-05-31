@@ -4,10 +4,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:crypto/crypto.dart';
 import 'package:intl/intl.dart';
+import 'package:manycards/services/auth_service.dart';
 
 abstract class BaseApiService {
   final http.Client client;
-  BaseApiService({required this.client});
+  final AuthService? _authService;
+
+  BaseApiService({required this.client, AuthService? authService})
+    : _authService = authService;
 
   static const String _region = 'us-east-1';
   static const String _service = 'execute-api';
@@ -158,6 +162,17 @@ abstract class BaseApiService {
     final payload = body != null ? jsonEncode(body) : '';
 
     if (requiresAuth) {
+      // Add Cognito token if available
+      String? cognitoToken;
+      if (_authService != null) {
+        cognitoToken = await _authService.getAuthToken();
+        if (cognitoToken != null) {
+          requestHeaders['x-cognito-token'] =
+              cognitoToken; // Use a different header for Cognito token
+        }
+      }
+
+      // Add AWS signature
       final signedHeaders = _getSignedHeaders(
         'POST',
         path,
@@ -165,6 +180,12 @@ abstract class BaseApiService {
         payload,
       );
       requestHeaders.addAll(signedHeaders);
+
+      // Move Cognito token to Authorization header after signing
+      if (cognitoToken != null) {
+        requestHeaders['Authorization'] = 'Bearer $cognitoToken';
+        requestHeaders.remove('x-cognito-token');
+      }
     }
 
     _logDebug('HEADERS: $requestHeaders');
@@ -210,6 +231,17 @@ abstract class BaseApiService {
     final payload = ''; // GET requests don't have a body
 
     if (requiresAuth) {
+      // Add Cognito token if available
+      String? cognitoToken;
+      if (_authService != null) {
+        cognitoToken = await _authService.getAuthToken();
+        if (cognitoToken != null) {
+          requestHeaders['x-cognito-token'] =
+              cognitoToken; // Use a different header for Cognito token
+        }
+      }
+
+      // Add AWS signature
       final signedHeaders = _getSignedHeaders(
         'GET',
         path,
@@ -217,6 +249,12 @@ abstract class BaseApiService {
         payload,
       );
       requestHeaders.addAll(signedHeaders);
+
+      // Move Cognito token to Authorization header after signing
+      if (cognitoToken != null) {
+        requestHeaders['Authorization'] = 'Bearer $cognitoToken';
+        requestHeaders.remove('x-cognito-token');
+      }
     }
 
     _logDebug('HEADERS: $requestHeaders');

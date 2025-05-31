@@ -2,19 +2,17 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:manycards/model/currency_model.dart';
+import 'package:manycards/utils/number_formatter.dart';
 import 'package:manycards/view/constants/text/text.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:provider/provider.dart';
 import 'package:manycards/controller/currency_controller.dart';
 
 class CurrencyRowWidget extends StatelessWidget {
-  final CurrencyModel currency;
+  final Map<String, dynamic> currency;
   final String selectedCurrencyCode;
   final Function(String) onCurrencySelected;
-
   final dynamic isRefreshing;
-
   final dynamic isInitialLoading;
 
   const CurrencyRowWidget({
@@ -26,6 +24,10 @@ class CurrencyRowWidget extends StatelessWidget {
     this.isInitialLoading = false,
   });
 
+  String _formatBalance(double balance, String symbol) {
+    return NumberFormatter.formatBalanceWithSymbol(balance, symbol);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLoading = isRefreshing && !isInitialLoading;
@@ -33,7 +35,7 @@ class CurrencyRowWidget extends StatelessWidget {
 
     return InkWell(
       onTap: () {
-        onCurrencySelected(currency.code);
+        onCurrencySelected(currency['code'] as String);
         Navigator.pop(context);
       },
       child: Container(
@@ -46,20 +48,20 @@ class CurrencyRowWidget extends StatelessWidget {
             Row(
               children: [
                 // Currency flag
-                currency.flag,
+                currency['flag'] as Widget,
                 SizedBox(width: 8.w),
                 // Currency details
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     CustomTextWidget(
-                      text: currency.code,
+                      text: currency['code'] as String,
                       fontSize: 16.sp,
                       color: const Color(0xFFEAEAEA),
                       fontWeight: FontWeight.w500,
                     ),
                     CustomTextWidget(
-                      text: currency.name,
+                      text: currency['name'] as String,
                       fontSize: 12.sp,
                       color: const Color(0xFF949494),
                     ),
@@ -87,14 +89,19 @@ class CurrencyRowWidget extends StatelessWidget {
                     : CustomTextWidget(
                       text:
                           controller.isBalanceVisible
-                              ? currency.formattedBalance
+                              ? _formatBalance(
+                                controller.getBalanceForCurrency(
+                                  currency['code'] as String,
+                                ),
+                                currency['symbol'] as String,
+                              )
                               : '* * * * * *',
                       fontSize: 16.sp,
                       color: const Color(0xFFEAEAEA),
                       fontWeight: FontWeight.w500,
                     ),
                 Radio<String>(
-                  value: currency.code,
+                  value: currency['code'] as String,
                   groupValue: selectedCurrencyCode,
                   onChanged: (value) {
                     if (value != null) {

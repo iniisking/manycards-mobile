@@ -40,11 +40,11 @@ class Data {
 
   factory Data.fromJson(Map<String, dynamic> json) {
     return Data(
-      originalAmount: (json['originalAmount'] ?? 0.0).toDouble(),
-      convertedAmount: (json['convertedAmount'] ?? 0.0).toDouble(),
-      fromCurrency: json['fromCurrency'] ?? '',
-      toCurrency: json['toCurrency'] ?? '',
-      exchangeRate: (json['exchangeRate'] ?? 0.0).toDouble(),
+      originalAmount: (json['original_amount'] ?? 0.0).toDouble(),
+      convertedAmount: (json['converted_amount'] ?? 0.0).toDouble(),
+      fromCurrency: json['from_currency'] ?? '',
+      toCurrency: json['to_currency'] ?? '',
+      exchangeRate: (json['exchange_rate'] ?? 0.0).toDouble(),
       timestamp: json['timestamp'] ?? '',
     );
   }

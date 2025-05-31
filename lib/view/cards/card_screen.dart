@@ -10,14 +10,17 @@ import 'package:manycards/view/constants/widgets/currency_dropdown.dart';
 import 'package:manycards/view/constants/widgets/shimmers.dart';
 import 'package:provider/provider.dart';
 import 'package:manycards/controller/card_controller.dart';
+import 'package:manycards/controller/currency_controller.dart';
 
 class CardScreen extends StatelessWidget {
   const CardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<CardController>(
-      builder: (context, cardController, child) {
+    return Consumer2<CardController, CurrencyController>(
+      builder: (context, cardController, currencyController, child) {
+        final selectedCard = cardController.selectedCard;
+
         return Scaffold(
           backgroundColor: backgroundColor,
           body: SafeArea(
@@ -57,11 +60,30 @@ class CardScreen extends StatelessWidget {
                       ],
                     ),
                     SizedBox(height: 25.h),
-                    CurrencyCard(
-                      cardColor: cardController.cardColor,
-                      balance: cardController.balance,
-                      currencySymbol: cardController.currencySymbol,
-                    ),
+                    if (cardController.isLoading ||
+                        currencyController.isLoading)
+                      const CardShimmer()
+                    else if (cardController.cards.isEmpty)
+                      const Center(
+                        child: Text(
+                          'No cards available',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      )
+                    else if (selectedCard == null)
+                      const Center(
+                        child: Text(
+                          'No card available for selected currency',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      )
+                    else
+                      CurrencyCard(
+                        cardColor: cardController.cardColor,
+                        balance: selectedCard.balance,
+                        currencySymbol: cardController.currencySymbol,
+                        cardNumber: selectedCard.maskedNumber,
+                      ),
                     SizedBox(height: 30.h),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -131,14 +153,23 @@ class CardScreen extends StatelessWidget {
                       ],
                     ),
                     SizedBox(height: 20.h),
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: 5,
-                      itemBuilder: (context, index) {
-                        return TransactionRowShimmer();
-                      },
-                    ),
+                    if (cardController.isLoading ||
+                        currencyController.isLoading)
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: 5,
+                        itemBuilder: (context, index) {
+                          return TransactionRowShimmer();
+                        },
+                      )
+                    else
+                      const Center(
+                        child: Text(
+                          'No transactions available',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
                     SizedBox(height: 75.h),
                   ],
                 ),

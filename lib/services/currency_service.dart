@@ -3,9 +3,11 @@ import '../model/currency/req/convert_currency_req.dart';
 import '../model/currency/res/convert_currency_res.dart';
 import '../model/currency/res/get_total_card_balance_res.dart';
 import 'base_api_service.dart';
+import 'auth_service.dart';
 
 class CurrencyService extends BaseApiService {
-  CurrencyService({required super.client}) : super();
+  CurrencyService({required super.client, required AuthService authService})
+    : super(authService: authService);
 
   Future<GetTotalBalanceRes> getTotalBalance() async {
     try {

@@ -3,11 +3,13 @@ import 'package:manycards/model/auth/req/confirm_sign_up_req.dart';
 import 'package:manycards/model/auth/req/sign_up_req.dart';
 import 'package:manycards/model/auth/res/login_res.dart';
 import 'package:manycards/services/auth_service.dart';
+import 'package:manycards/services/card_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 class AuthController extends ChangeNotifier {
   final AuthService _authService;
+  final CardService _cardService;
   final SharedPreferences _prefs;
   bool _isLoading = false;
   bool _isLoggedIn = false;
@@ -19,13 +21,17 @@ class AuthController extends ChangeNotifier {
 
   static const String _firstNameKey = 'user_first_name';
 
-  AuthController(this._authService, {SharedPreferences? prefs})
-    : _prefs =
-          prefs ?? (throw Exception('SharedPreferences must be provided')) {
+  AuthController(
+    this._authService,
+    this._cardService, {
+    SharedPreferences? prefs,
+  }) : _prefs =
+           prefs ?? (throw Exception('SharedPreferences must be provided')) {
     _initializeAuthState();
   }
 
   // Getters
+  AuthService get authService => _authService;
   bool get isLoading => _isLoading;
   bool get isLoggedIn => _isLoggedIn;
   bool get isEmailVerified => _isEmailVerified;
@@ -180,6 +186,18 @@ class AuthController extends ChangeNotifier {
       final response = await _authService.confirmSignUp(request);
       if (response.success) {
         _isEmailVerified = true;
+
+        // Generate initial cards after successful confirmation
+        try {
+          debugPrint('Generating initial cards for new user...');
+          await _cardService.generateInitialCards();
+          debugPrint('Initial cards generated successfully');
+        } catch (e) {
+          debugPrint('Error generating initial cards: $e');
+          // Don't fail the signup if card generation fails
+          // The user can retry card generation later
+        }
+
         notifyListeners();
         return true;
       } else {

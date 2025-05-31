@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:manycards/utils/number_formatter.dart';
 import 'package:manycards/view/constants/text/text.dart';
 
 class CurrencyCard extends StatelessWidget {
@@ -29,7 +30,7 @@ class CurrencyCard extends StatelessWidget {
   });
 
   String get formattedBalance {
-    return '$currencySymbol${balance.toStringAsFixed(2)}';
+    return NumberFormatter.formatBalanceWithSymbol(balance, currencySymbol);
   }
 
   @override
