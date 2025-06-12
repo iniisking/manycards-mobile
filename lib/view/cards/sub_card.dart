@@ -6,9 +6,42 @@ import 'package:manycards/view/cards/create_subcard.dart';
 import 'package:manycards/view/constants/text/text.dart';
 import 'package:manycards/view/constants/widgets/button.dart';
 import 'package:manycards/view/constants/widgets/colors.dart';
+import 'package:provider/provider.dart';
+import 'package:manycards/controller/navigation_controller.dart';
 
-class SubCard extends StatelessWidget {
+class SubCard extends StatefulWidget {
   const SubCard({super.key});
+
+  @override
+  State<SubCard> createState() => _SubCardState();
+}
+
+class _SubCardState extends State<SubCard> {
+  NavigationController? _navigationController;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _navigationController = context.read<NavigationController>();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Hide bottom nav bar when screen is initialized
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _navigationController?.hideBottomNavBar();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    // Show bottom nav bar when screen is disposed
+    _navigationController?.showBottomNavBar();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

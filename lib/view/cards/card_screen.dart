@@ -133,6 +133,9 @@ class CardScreen extends StatelessWidget {
                               final result = await Navigator.push(
                                 context,
                                 MaterialPageRoute(
+                                  settings: const RouteSettings(
+                                    name: '/subcard',
+                                  ),
                                   builder: (context) => const SubCard(),
                                 ),
                               );

@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:manycards/controller/currency_controller.dart';
 import 'package:manycards/controller/auth_controller.dart';
 import 'package:manycards/controller/card_controller.dart';
+import 'package:manycards/controller/navigation_controller.dart';
 import 'package:manycards/services/auth_service.dart';
 import 'package:manycards/services/card_service.dart';
 import 'package:manycards/services/storage_service.dart';
@@ -30,7 +31,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        //storage provider
         Provider<StorageService>(create: (_) => StorageService()),
+        //auth and provider
         Provider<AuthService>(
           create:
               (context) => AuthService(
@@ -38,6 +41,8 @@ class MyApp extends StatelessWidget {
                 storageService: context.read<StorageService>(),
               ),
         ),
+
+        //card provider
         Provider<CardService>(
           create:
               (context) => CardService(
@@ -45,6 +50,8 @@ class MyApp extends StatelessWidget {
                 authService: context.read<AuthService>(),
               ),
         ),
+
+        //auth controller
         ChangeNotifierProxyProvider2<AuthService, CardService, AuthController>(
           create:
               (context) => AuthController(
@@ -79,6 +86,8 @@ class MyApp extends StatelessWidget {
                   cardController ??
                   CardController(currencyController, cardService),
         ),
+        // Add NavigationController
+        ChangeNotifierProvider(create: (_) => NavigationController()),
       ],
       child: ScreenUtilInit(
         ensureScreenSize: true,
