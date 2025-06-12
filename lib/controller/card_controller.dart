@@ -52,7 +52,7 @@ class CardController extends ChangeNotifier {
     debugPrint('Getting balance for card ${card.number}:');
     debugPrint('- Currency: ${card.currency}');
     debugPrint('- Balance: ${card.balance}');
-    return card.balance;
+    return card.balance.toDouble();
   }
 
   // Card specific getters
@@ -105,7 +105,7 @@ class CardController extends ChangeNotifier {
     try {
       final response = await _cardService.getAllCards();
       if (response.success) {
-        _cards = response.data.cards;
+        _cards = response.data;
         debugPrint('Loaded ${_cards.length} cards');
         for (var card in _cards) {
           debugPrint('Card ${card.number}:');
@@ -114,6 +114,25 @@ class CardController extends ChangeNotifier {
         }
       } else {
         debugPrint('Failed to load cards: ${response.message}');
+        // If no cards found, generate initial cards
+        if (response.message.contains('No cards found')) {
+          debugPrint('Generating initial cards...');
+          final initialCardsResponse =
+              await _cardService.generateInitialCards();
+          if (initialCardsResponse.success) {
+            _cards = initialCardsResponse.data;
+            debugPrint('Generated ${_cards.length} initial cards');
+            for (var card in _cards) {
+              debugPrint('Generated card ${card.number}:');
+              debugPrint('- Currency: ${card.currency}');
+              debugPrint('- Balance: ${card.balance}');
+            }
+          } else {
+            debugPrint(
+              'Failed to generate initial cards: ${initialCardsResponse.message}',
+            );
+          }
+        }
       }
     } catch (e) {
       debugPrint('Error loading cards: $e');

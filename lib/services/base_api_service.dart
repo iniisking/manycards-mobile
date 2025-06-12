@@ -167,8 +167,7 @@ abstract class BaseApiService {
       if (_authService != null) {
         cognitoToken = await _authService.getAuthToken();
         if (cognitoToken != null) {
-          requestHeaders['x-cognito-token'] =
-              cognitoToken; // Use a different header for Cognito token
+          requestHeaders['x-cognito-token'] = cognitoToken;
         }
       }
 
@@ -181,10 +180,9 @@ abstract class BaseApiService {
       );
       requestHeaders.addAll(signedHeaders);
 
-      // Move Cognito token to Authorization header after signing
+      // Add Cognito token as Bearer token
       if (cognitoToken != null) {
         requestHeaders['Authorization'] = 'Bearer $cognitoToken';
-        requestHeaders.remove('x-cognito-token');
       }
     }
 
@@ -236,8 +234,7 @@ abstract class BaseApiService {
       if (_authService != null) {
         cognitoToken = await _authService.getAuthToken();
         if (cognitoToken != null) {
-          requestHeaders['x-cognito-token'] =
-              cognitoToken; // Use a different header for Cognito token
+          requestHeaders['x-cognito-token'] = cognitoToken;
         }
       }
 
@@ -250,17 +247,13 @@ abstract class BaseApiService {
       );
       requestHeaders.addAll(signedHeaders);
 
-      // Move Cognito token to Authorization header after signing
+      // Add Cognito token as Bearer token
       if (cognitoToken != null) {
         requestHeaders['Authorization'] = 'Bearer $cognitoToken';
-        requestHeaders.remove('x-cognito-token');
       }
     }
 
     _logDebug('HEADERS: $requestHeaders');
-    if (stringQueryParams.isNotEmpty) {
-      _logDebug('QUERY PARAMETERS: $stringQueryParams');
-    }
 
     try {
       final response = await client

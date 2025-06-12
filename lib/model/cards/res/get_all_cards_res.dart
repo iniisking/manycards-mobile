@@ -2,7 +2,7 @@ class GetAllCardsRes {
   final bool error;
   final bool success;
   final String message;
-  final Data data;
+  final List<Card> data;
 
   GetAllCardsRes({
     required this.error,
@@ -16,25 +16,11 @@ class GetAllCardsRes {
       error: json['error'] ?? false,
       success: json['success'] ?? false,
       message: json['message'] ?? '',
-      data: Data.fromJson(json['data'] ?? {}),
-    );
-  }
-}
-
-class Data {
-  final List<Card> cards;
-  final int count;
-
-  Data({required this.cards, required this.count});
-
-  factory Data.fromJson(Map<String, dynamic> json) {
-    return Data(
-      cards:
-          (json['cards'] as List<dynamic>?)
+      data:
+          (json['data'] as List<dynamic>?)
               ?.map((e) => Card.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      count: json['count'] ?? 0,
     );
   }
 }
@@ -44,6 +30,7 @@ class Card {
   final String cvv;
   final DateTime createdAt;
   final String cardType;
+  final String cardId;
   final String network;
   final double balance;
   final String userId;
@@ -59,6 +46,7 @@ class Card {
     required this.cvv,
     required this.createdAt,
     required this.cardType,
+    required this.cardId,
     required this.network,
     required this.balance,
     required this.userId,
@@ -78,6 +66,7 @@ class Card {
         json['created_at'] ?? DateTime.now().toIso8601String(),
       ),
       cardType: json['card_type'] ?? '',
+      cardId: json['card_id'] ?? '',
       network: json['network'] ?? '',
       balance: (json['balance'] ?? 0.0).toDouble(),
       userId: json['user_id'] ?? '',

@@ -18,6 +18,7 @@ class AuthController extends ChangeNotifier {
   LoginRes? _user;
   String? _lastEmail;
   String? _firstName;
+  String? _lastPassword;
 
   static const String _firstNameKey = 'user_first_name';
 
@@ -99,6 +100,9 @@ class AuthController extends ChangeNotifier {
     _setLoading(true);
     _clearError();
     try {
+      // Store password temporarily for login after confirmation
+      _lastPassword = password;
+
       // Split full name into first and last name
       final nameParts = fullName.trim().split(' ');
       if (nameParts.length != 2) {
@@ -187,15 +191,31 @@ class AuthController extends ChangeNotifier {
       if (response.success) {
         _isEmailVerified = true;
 
-        // Generate initial cards after successful confirmation
-        try {
-          debugPrint('Generating initial cards for new user...');
-          await _cardService.generateInitialCards();
-          debugPrint('Initial cards generated successfully');
-        } catch (e) {
-          debugPrint('Error generating initial cards: $e');
-          // Don't fail the signup if card generation fails
-          // The user can retry card generation later
+        // Log in the user after successful confirmation
+        debugPrint('Logging in user after confirmation...');
+        final loginResponse = await _authService.login(
+          email: email,
+          password:
+              _lastPassword ?? '', // We need to store the password temporarily
+        );
+
+        if (loginResponse.success) {
+          _user = loginResponse;
+          _isLoggedIn = true;
+
+          // Now generate initial cards with valid authentication
+          try {
+            debugPrint('Generating initial cards for new user...');
+            await _cardService.generateInitialCards();
+            debugPrint('Initial cards generated successfully');
+          } catch (e) {
+            debugPrint('Error generating initial cards: $e');
+            // Don't fail the signup if card generation fails
+            // The user can retry card generation later
+          }
+        } else {
+          _setError('Failed to log in after confirmation');
+          return false;
         }
 
         notifyListeners();
