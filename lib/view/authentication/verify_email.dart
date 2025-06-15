@@ -26,7 +26,26 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   bool _isVerifying = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Add listeners to all controllers
+    for (var controller in _controllers) {
+      controller.addListener(_updateButtonState);
+    }
+  }
+
+  void _updateButtonState() {
+    setState(() {
+      // This will trigger a rebuild and update the button state
+    });
+  }
+
+  @override
   void dispose() {
+    // Remove listeners
+    for (var controller in _controllers) {
+      controller.removeListener(_updateButtonState);
+    }
     for (var controller in _controllers) {
       controller.dispose();
     }
@@ -41,12 +60,15 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     ClipboardData? clipboardData = await Clipboard.getData(
       Clipboard.kTextPlain,
     );
-    if (clipboardData?.text != null && clipboardData!.text!.isNotEmpty) {
+    if (clipboardData != null &&
+        clipboardData.text != null &&
+        clipboardData.text!.isNotEmpty) {
       // Extract only digits from pasted text
       String pastedText = clipboardData.text!.replaceAll(RegExp(r'\D'), '');
+
       if (pastedText.isEmpty) return;
 
-      // Take only up to 6 digits
+      // Take only up to 6 digits since this is a 6-digit OTP
       if (pastedText.length > 6) {
         pastedText = pastedText.substring(0, 6);
       }
@@ -57,6 +79,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         for (var controller in _controllers) {
           controller.clear();
         }
+
         // Distribute pasted digits
         for (int i = 0; i < pastedText.length; i++) {
           _controllers[i].text = pastedText[i];
@@ -123,18 +146,24 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
           LengthLimitingTextInputFormatter(1),
           FilteringTextInputFormatter.digitsOnly,
         ],
+        // Enable context menu customization for paste functionality
         contextMenuBuilder: (context, editableTextState) {
           final List<ContextMenuButtonItem> buttonItems =
               editableTextState.contextMenuButtonItems;
+
+          // Find paste button if it exists
           final int pasteButtonIndex = buttonItems.indexWhere(
             (item) => item.type == ContextMenuButtonType.paste,
           );
+
           if (pasteButtonIndex >= 0) {
+            // Replace original paste button with our custom one
             buttonItems[pasteButtonIndex] = ContextMenuButtonItem(
               onPressed: _handlePaste,
               type: ContextMenuButtonType.paste,
             );
           }
+
           return AdaptiveTextSelectionToolbar.buttonItems(
             anchors: editableTextState.contextMenuAnchors,
             buttonItems: buttonItems,

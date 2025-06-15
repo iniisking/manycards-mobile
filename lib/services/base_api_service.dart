@@ -146,6 +146,22 @@ abstract class BaseApiService {
     };
   }
 
+  Map<String, String> getHeaders({bool requiresAuth = true}) {
+    final headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+
+    if (requiresAuth && _authService != null) {
+      final token = _authService!.getAuthToken();
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+    }
+
+    return headers;
+  }
+
   Future<dynamic> post(
     String endpoint, {
     Map<String, dynamic>? body,
@@ -155,43 +171,43 @@ abstract class BaseApiService {
     final url = endpoint;
     _logDebug('POST REQUEST to $url');
 
-    final uri = Uri.parse(url);
-    final path = uri.path;
-
-    Map<String, String> requestHeaders = {'Host': uri.host, ...?headers};
-    final payload = body != null ? jsonEncode(body) : '';
+    Map<String, String> requestHeaders = {
+      'Host': Uri.parse(url).host,
+      ...?headers,
+    };
+    final payload = body != null ? json.encode(body) : '';
 
     if (requiresAuth) {
       // Add Cognito token if available
       String? cognitoToken;
       if (_authService != null) {
-        cognitoToken = await _authService.getAuthToken();
+        cognitoToken = await _authService!.getAuthToken();
         if (cognitoToken != null) {
-          requestHeaders['x-cognito-token'] = cognitoToken;
+          requestHeaders['Authorization'] = 'Bearer $cognitoToken';
+          _logDebug('Added Authorization header with token: $cognitoToken');
+        } else {
+          _logDebug(
+            'Warning: No Cognito token available for authenticated request',
+          );
         }
       }
 
       // Add AWS signature
       final signedHeaders = _getSignedHeaders(
         'POST',
-        path,
+        Uri.parse(url).path,
         requestHeaders,
         payload,
       );
-      requestHeaders.addAll(signedHeaders);
-
-      // Add Cognito token as Bearer token
-      if (cognitoToken != null) {
-        requestHeaders['Authorization'] = 'Bearer $cognitoToken';
-      }
+      // Use x-aws-signature header instead of Authorization
+      requestHeaders['x-aws-signature'] = signedHeaders['Authorization']!;
     }
 
     _logDebug('HEADERS: $requestHeaders');
-    _logDebug('BODY: $payload');
 
     try {
       final response = await client
-          .post(uri, headers: requestHeaders, body: payload)
+          .post(Uri.parse(url), headers: requestHeaders, body: payload)
           .timeout(Duration(seconds: 15));
 
       _logDebug('RESPONSE STATUS: ${response.statusCode}');
@@ -232,9 +248,14 @@ abstract class BaseApiService {
       // Add Cognito token if available
       String? cognitoToken;
       if (_authService != null) {
-        cognitoToken = await _authService.getAuthToken();
+        cognitoToken = await _authService!.getAuthToken();
         if (cognitoToken != null) {
-          requestHeaders['x-cognito-token'] = cognitoToken;
+          requestHeaders['Authorization'] = 'Bearer $cognitoToken';
+          _logDebug('Added Authorization header with token: $cognitoToken');
+        } else {
+          _logDebug(
+            'Warning: No Cognito token available for authenticated request',
+          );
         }
       }
 
@@ -245,12 +266,8 @@ abstract class BaseApiService {
         requestHeaders,
         payload,
       );
-      requestHeaders.addAll(signedHeaders);
-
-      // Add Cognito token as Bearer token
-      if (cognitoToken != null) {
-        requestHeaders['Authorization'] = 'Bearer $cognitoToken';
-      }
+      // Use x-aws-signature header instead of Authorization
+      requestHeaders['x-aws-signature'] = signedHeaders['Authorization']!;
     }
 
     _logDebug('HEADERS: $requestHeaders');

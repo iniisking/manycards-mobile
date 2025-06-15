@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
@@ -8,12 +9,23 @@ import 'package:manycards/controller/currency_controller.dart';
 import 'package:manycards/controller/auth_controller.dart';
 import 'package:manycards/controller/card_controller.dart';
 import 'package:manycards/controller/navigation_controller.dart';
+import 'package:manycards/controller/payment_controller.dart';
 import 'package:manycards/services/auth_service.dart';
 import 'package:manycards/services/card_service.dart';
 import 'package:manycards/services/storage_service.dart';
+import 'package:manycards/services/payment_service.dart';
 import 'package:manycards/view/authentication/auth_wrapper.dart';
 
 void main() async {
+  // Set the status bar style
+  SystemChrome.setSystemUIOverlayStyle(
+    SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent, // Make status bar transparent
+      statusBarIconBrightness:
+          Brightness.light, // Use light icons (for dark backgrounds)
+      statusBarBrightness: Brightness.light, // For iOS
+    ),
+  );
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize SharedPreferences
@@ -51,6 +63,15 @@ class MyApp extends StatelessWidget {
               ),
         ),
 
+        //payment provider
+        Provider<PaymentService>(
+          create:
+              (context) => PaymentService(
+                client: http.Client(),
+                authService: context.read<AuthService>(),
+              ),
+        ),
+
         //auth controller
         ChangeNotifierProxyProvider2<AuthService, CardService, AuthController>(
           create:
@@ -60,10 +81,19 @@ class MyApp extends StatelessWidget {
                 prefs: prefs,
               ),
           update:
-              (_, authService, cardService, controller) =>
-                  controller ??
+              (context, authService, cardService, previous) =>
                   AuthController(authService, cardService, prefs: prefs),
         ),
+
+        //payment controller
+        ChangeNotifierProvider<PaymentController>(
+          create:
+              (context) => PaymentController(
+                paymentService: context.read<PaymentService>(),
+                authService: context.read<AuthService>(),
+              ),
+        ),
+
         ChangeNotifierProvider(
           create:
               (context) => CurrencyController(

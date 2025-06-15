@@ -2,7 +2,14 @@ import 'package:flutter/material.dart';
 
 class NavigationController extends ChangeNotifier {
   bool _isBottomNavBarVisible = true;
-  final List<String> _screensWithoutNavBar = ['subcard', '/subcard'];
+  final List<String> _screensWithoutNavBar = [
+    'subcard',
+    '/subcard',
+    'topup',
+    '/topup',
+    'modal',
+    '/modal',
+  ];
 
   // Track the previous route to handle back navigation properly
   String? _previousRoute;

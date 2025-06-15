@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../controller/currency_controller.dart';
 import '../../controller/auth_controller.dart';
+import 'top_up.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -71,7 +72,7 @@ class HomeScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       CustomTextWidget(
-                        text: 'Welcome, ${authController.firstName}',
+                        text: 'Hi, ${authController.firstName}',
                         fontSize: 20.sp,
                         color: fisrtHeaderTextColor,
                         fontWeight: FontWeight.bold,
@@ -182,7 +183,16 @@ class HomeScreen extends StatelessWidget {
                       //Top Up
                       QuickActionButton(
                         onTap: () {
-                          // your tap logic here
+                          showModalBottomSheet(
+                            context: context,
+                            backgroundColor: Colors.transparent,
+                            isScrollControlled: true,
+                            constraints: BoxConstraints(
+                              maxHeight: MediaQuery.of(context).size.height,
+                            ),
+                            routeSettings: const RouteSettings(name: 'modal'),
+                            builder: (context) => const TopUpScreen(),
+                          );
                         },
                         icon: Padding(
                           padding: EdgeInsets.all(5.sp),

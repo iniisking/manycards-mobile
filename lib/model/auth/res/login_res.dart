@@ -1,23 +1,37 @@
 class LoginRes {
-  final bool error;
   final bool success;
+  final String? token;
+  final String? ngnCardId;
   final String message;
-  final Data data;
+  final Data? data;
 
   LoginRes({
-    required this.error,
     required this.success,
+    this.token,
+    this.ngnCardId,
     required this.message,
-    required this.data,
+    this.data,
   });
 
   factory LoginRes.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] as Map<String, dynamic>?;
     return LoginRes(
-      error: json['error'] ?? false,
-      success: json['success'] ?? false,
-      message: json['message'] ?? '',
-      data: Data.fromJson(json['data'] ?? {}),
+      success: json['success'] as bool,
+      token: data?['id_token'] as String?,
+      ngnCardId: data?['ngn_card_id'] as String?,
+      message: json['message'] as String,
+      data: data != null ? Data.fromJson(data) : null,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'success': success,
+      'token': token,
+      'ngn_card_id': ngnCardId,
+      'message': message,
+      'data': data?.toJson(),
+    };
   }
 }
 
@@ -28,6 +42,7 @@ class Data {
   final int expiresIn;
   final String tokenType;
   final String email;
+  final String? ngnCardId;
 
   Data({
     required this.idToken,
@@ -36,6 +51,7 @@ class Data {
     required this.expiresIn,
     required this.tokenType,
     required this.email,
+    this.ngnCardId,
   });
 
   factory Data.fromJson(Map<String, dynamic> json) {
@@ -46,6 +62,19 @@ class Data {
       expiresIn: json['expires_in'] ?? 0,
       tokenType: json['token_type'] ?? '',
       email: json['email'] ?? '',
+      ngnCardId: json['ngn_card_id'] as String?,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id_token': idToken,
+      'refresh_token': refreshToken,
+      'access_token': accessToken,
+      'expires_in': expiresIn,
+      'token_type': tokenType,
+      'email': email,
+      'ngn_card_id': ngnCardId,
+    };
   }
 }

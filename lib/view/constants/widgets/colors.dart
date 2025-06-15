@@ -11,3 +11,5 @@ final buttonTextColor = const Color(0xFF121212);
 final actionButtonColor = const Color(0xFF2C2C2C);
 final actionButtonIconColor = const Color(0xFFC4C4C4);
 final hintTextColor = const Color(0xFF9A9A9A);
+final inactiveButtonBackground = const Color(0xFF2C2C2C);
+final inactiveButtonText = const Color(0xFF656565);
