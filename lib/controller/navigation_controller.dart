@@ -1,3 +1,5 @@
+// ignore_for_file: unused_field
+
 import 'package:flutter/material.dart';
 
 class NavigationController extends ChangeNotifier {
@@ -9,6 +11,8 @@ class NavigationController extends ChangeNotifier {
     '/topup',
     'modal',
     '/modal',
+    'transfer',
+    '/transfer',
   ];
 
   // Track the previous route to handle back navigation properly

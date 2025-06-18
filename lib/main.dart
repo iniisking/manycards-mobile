@@ -4,7 +4,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:manycards/controller/currency_controller.dart';
 import 'package:manycards/controller/auth_controller.dart';
 import 'package:manycards/controller/card_controller.dart';
@@ -14,6 +13,8 @@ import 'package:manycards/services/auth_service.dart';
 import 'package:manycards/services/card_service.dart';
 import 'package:manycards/services/storage_service.dart';
 import 'package:manycards/services/payment_service.dart';
+import 'package:manycards/services/currency_service.dart';
+import 'package:manycards/services/transfer_service.dart';
 import 'package:manycards/view/authentication/auth_wrapper.dart';
 
 void main() async {
@@ -54,12 +55,30 @@ class MyApp extends StatelessWidget {
               ),
         ),
 
+        //currency service provider
+        Provider<CurrencyService>(
+          create:
+              (context) => CurrencyService(
+                client: http.Client(),
+                authService: context.read<AuthService>(),
+              ),
+        ),
+
         //card provider
         Provider<CardService>(
           create:
               (context) => CardService(
                 client: http.Client(),
                 authService: context.read<AuthService>(),
+              ),
+        ),
+
+        //transfer service provider
+        Provider<TransferService>(
+          create:
+              (context) => TransferService(
+                currencyService: context.read<CurrencyService>(),
+                cardService: context.read<CardService>(),
               ),
         ),
 

@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -36,17 +38,6 @@ class _PaystackWebViewState extends State<PaystackWebView> {
         WebViewController()
           ..setJavaScriptMode(JavaScriptMode.unrestricted)
           ..setBackgroundColor(Colors.black)
-          ..addJavaScriptChannel(
-            'Flutter',
-            onMessageReceived: (JavaScriptMessage message) {
-              debugPrint(
-                'Received message from JavaScript: ${message.message}',
-              );
-              if (message.message == 'success') {
-                _handleSuccess();
-              }
-            },
-          )
           ..setNavigationDelegate(
             NavigationDelegate(
               onPageStarted: (String url) {
@@ -62,7 +53,7 @@ class _PaystackWebViewState extends State<PaystackWebView> {
                 });
 
                 // Inject JavaScript to detect payment status
-                final result = await controller.runJavaScriptReturningResult('''
+                await controller.runJavaScript('''
                   (function() {
                     function checkSuccess() {
                       try {
@@ -89,7 +80,7 @@ class _PaystackWebViewState extends State<PaystackWebView> {
                         for (const indicator of successIndicators) {
                           if (bodyText.includes(indicator) || titleText.includes(indicator)) {
                             console.log('Found success indicator:', indicator);
-                            return 'success';
+                            return true;
                           }
                         }
                         
@@ -103,26 +94,26 @@ class _PaystackWebViewState extends State<PaystackWebView> {
                         
                         if (successElements.length > 0) {
                           console.log('Found success elements:', successElements.length);
-                          return 'success';
+                          return true;
                         }
                         
-                        return 'unknown';
+                        return false;
                       } catch (error) {
                         console.error('Error in checkSuccess:', error);
-                        return 'unknown';
+                        return false;
                       }
                     }
                     
                     // Initial check
-                    const initialResult = checkSuccess();
-                    console.log('Initial check result:', initialResult);
+                    if (checkSuccess()) {
+                      window.location.href = 'paystack://success';
+                    }
                     
                     // Set up a mutation observer to watch for changes
                     const observer = new MutationObserver(function(mutations) {
-                      const result = checkSuccess();
-                      if (result === 'success') {
+                      if (checkSuccess()) {
                         console.log('Success detected after DOM change');
-                        Flutter.postMessage('success');
+                        window.location.href = 'paystack://success';
                       }
                     });
                     
@@ -132,21 +123,14 @@ class _PaystackWebViewState extends State<PaystackWebView> {
                       subtree: true,
                       characterData: true
                     });
-                    
-                    return initialResult;
                   })();
                 ''');
-
-                debugPrint('JavaScript result: $result');
-
-                if (result.toString().contains('success')) {
-                  _handleSuccess();
-                }
               },
               onNavigationRequest: (NavigationRequest request) {
                 debugPrint('Navigation request: ${request.url}');
                 // Check if the URL contains success or cancel
-                if (request.url.contains('success') ||
+                if (request.url.contains('paystack://success') ||
+                    request.url.contains('success') ||
                     request.url.contains('status=success') ||
                     request.url.contains('thank-you') ||
                     request.url.contains('completed')) {

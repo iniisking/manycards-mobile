@@ -1,7 +1,11 @@
+// ignore_for_file: avoid_print
+
 import '../config/api_endpoints.dart';
 import '../model/cards/res/get_all_cards_res.dart';
 import 'base_api_service.dart';
 import 'auth_service.dart';
+import '../model/cards/req/transfer_funds_req.dart';
+import '../model/cards/res/transfer_funds_res.dart';
 
 class CardService extends BaseApiService {
   CardService({required super.client, required AuthService authService})
@@ -100,6 +104,25 @@ class CardService extends BaseApiService {
     } catch (e) {
       print('Error in generateInitialCards: $e');
       throw Exception('Error generating initial cards: $e');
+    }
+  }
+
+  Future<TransferFundsRes> transferFunds(TransferFundsReq req) async {
+    try {
+      final response = await post(
+        ApiEndpoints.transferFunds,
+        body: {
+          'source_card_id': req.sourceCardId,
+          'destination_card_id': req.destinationCardId,
+          'amount': req.amount,
+          'source_currency': req.sourceCurrency,
+          'destination_currency': req.destinationCurrency,
+        },
+        requiresAuth: true,
+      );
+      return TransferFundsRes.fromJson(response);
+    } catch (e) {
+      throw Exception('Error transferring funds: $e');
     }
   }
 

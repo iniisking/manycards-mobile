@@ -12,7 +12,6 @@ import 'package:manycards/model/auth/res/sign_up_res.dart';
 import 'package:manycards/services/base_api_service.dart';
 import 'package:manycards/services/storage_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:jwt_decoder/jwt_decoder.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:manycards/services/card_service.dart';

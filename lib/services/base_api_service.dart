@@ -1,4 +1,4 @@
-// ignore_for_file: avoid_print
+// ignore_for_file: avoid_print, unnecessary_null_comparison
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -153,7 +153,7 @@ abstract class BaseApiService {
     };
 
     if (requiresAuth && _authService != null) {
-      final token = _authService!.getAuthToken();
+      final token = _authService.getAuthToken();
       if (token != null) {
         headers['Authorization'] = 'Bearer $token';
       }
@@ -181,7 +181,7 @@ abstract class BaseApiService {
       // Add Cognito token if available
       String? cognitoToken;
       if (_authService != null) {
-        cognitoToken = await _authService!.getAuthToken();
+        cognitoToken = await _authService.getAuthToken();
         if (cognitoToken != null) {
           requestHeaders['Authorization'] = 'Bearer $cognitoToken';
           _logDebug('Added Authorization header with token: $cognitoToken');
@@ -248,7 +248,7 @@ abstract class BaseApiService {
       // Add Cognito token if available
       String? cognitoToken;
       if (_authService != null) {
-        cognitoToken = await _authService!.getAuthToken();
+        cognitoToken = await _authService.getAuthToken();
         if (cognitoToken != null) {
           requestHeaders['Authorization'] = 'Bearer $cognitoToken';
           _logDebug('Added Authorization header with token: $cognitoToken');

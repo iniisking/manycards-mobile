@@ -11,7 +11,8 @@ import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../controller/currency_controller.dart';
 import '../../controller/auth_controller.dart';
-import 'top_up.dart';
+import '../actions/top_up.dart';
+import '../actions/transfer.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -206,7 +207,18 @@ class HomeScreen extends StatelessWidget {
                       //Transfer
                       QuickActionButton(
                         onTap: () {
-                          // your tap logic here
+                          showModalBottomSheet(
+                            context: context,
+                            backgroundColor: Colors.transparent,
+                            isScrollControlled: true,
+                            constraints: BoxConstraints(
+                              maxHeight: MediaQuery.of(context).size.height,
+                            ),
+                            routeSettings: const RouteSettings(
+                              name: 'transfer',
+                            ),
+                            builder: (context) => const TransferScreen(),
+                          );
                         },
                         icon: Padding(
                           padding: EdgeInsets.all(2.sp),

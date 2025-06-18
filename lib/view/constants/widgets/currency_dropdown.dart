@@ -8,6 +8,7 @@ class CurrencyDropdown extends StatefulWidget {
   final Color backgroundColor;
   final Color shadowColor;
   final List<CurrencyOption>? customCurrencies;
+  final String? excludeCurrency;
 
   const CurrencyDropdown({
     super.key,
@@ -16,6 +17,7 @@ class CurrencyDropdown extends StatefulWidget {
     this.backgroundColor = Colors.white,
     this.shadowColor = Colors.black,
     this.customCurrencies,
+    this.excludeCurrency,
   });
 
   @override
@@ -57,6 +59,13 @@ class _CurrencyDropdownState extends State<CurrencyDropdown> {
           ),
         ];
 
+    final filteredCurrencies =
+        widget.excludeCurrency == null
+            ? currencies
+            : currencies
+                .where((c) => c.value != widget.excludeCurrency)
+                .toList();
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
       decoration: BoxDecoration(
@@ -77,7 +86,7 @@ class _CurrencyDropdownState extends State<CurrencyDropdown> {
           icon: Icon(Icons.keyboard_arrow_down, size: 18.sp),
           isDense: true,
           items:
-              currencies.map((currency) {
+              filteredCurrencies.map((currency) {
                 return DropdownMenuItem<String>(
                   value: currency.value,
                   child: Row(

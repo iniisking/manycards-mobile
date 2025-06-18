@@ -1,3 +1,5 @@
+// ignore_for_file: unused_field
+
 import 'package:flutter/material.dart';
 
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -6,7 +8,7 @@ import 'package:manycards/view/constants/text/text.dart';
 import 'package:manycards/view/constants/widgets/colors.dart';
 import 'package:manycards/view/constants/widgets/button.dart';
 import 'package:manycards/controller/payment_controller.dart';
-import 'package:manycards/view/home/paystack_webview.dart';
+import 'package:manycards/view/actions/paystack_webview.dart';
 import 'package:intl/intl.dart';
 
 class TopUpScreen extends StatefulWidget {
@@ -116,8 +118,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
       try {
         final paymentController = context.read<PaymentController>();
 
-        // Get the raw input value and remove commas
-        final amount = int.parse(_amountController.text.replaceAll(',', ''));
+        // Get the raw input value and remove commas, parse as double
+        final amount = double.parse(_amountController.text.replaceAll(',', ''));
         debugPrint('Amount to send: $amount');
 
         final success = await paymentController.initiateTopUp(context, amount);
@@ -171,9 +173,9 @@ class _TopUpScreenState extends State<TopUpScreen> {
     return Container(
       height: MediaQuery.of(context).size.height,
       padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 40.h),
-      decoration: const BoxDecoration(
-        color: Color(0xFF121212),
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        color: buttonTextColor,
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(30),
           topRight: Radius.circular(30),
         ),
@@ -185,6 +187,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            SizedBox(height: 24.h),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -205,6 +208,14 @@ class _TopUpScreenState extends State<TopUpScreen> {
                 ),
               ],
             ),
+            SizedBox(height: 8.h),
+            CustomTextWidget(
+              text: 'Fund your Naira wallet to make payments',
+              fontSize: 15.sp,
+              color: secondHeadTextColor,
+              fontWeight: FontWeight.normal,
+            ),
+
             SizedBox(height: 24.h),
             CustomTextWidget(
               text: 'Enter Amount (₦)',

@@ -11,7 +11,7 @@ class PaystackWebhookReq {
 
 class Data {
   final String reference;
-  final int amount;
+  final double amount;
   final String currency;
   final String status;
   final Customer customer;

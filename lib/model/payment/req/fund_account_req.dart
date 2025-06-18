@@ -1,6 +1,6 @@
 class FundAccountReq {
   final String cardId;
-  final int amount;
+  final double amount;
 
   FundAccountReq({required this.cardId, required this.amount});
 

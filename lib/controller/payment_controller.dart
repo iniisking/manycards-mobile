@@ -12,7 +12,7 @@ class PaymentController extends ChangeNotifier {
   String? cardId;
   String? error;
   bool isLoading = false;
-  int? _amount;
+  double? _amount;
 
   PaymentController({
     required PaymentService paymentService,
@@ -20,7 +20,7 @@ class PaymentController extends ChangeNotifier {
   }) : _paymentService = paymentService,
        _authService = authService;
 
-  Future<bool> initiateTopUp(BuildContext context, int amount) async {
+  Future<bool> initiateTopUp(BuildContext context, double amount) async {
     try {
       isLoading = true;
       error = null;
