@@ -25,6 +25,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool _isFormValid = false;
+  bool _isLoading = false;
+
   @override
   void initState() {
     super.initState();
@@ -117,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       SizedBox(height: 8.h),
                       CustomTextWidget(
-                        text: 'Sign in to continue to your ManySubs account',
+                        text: 'Sign in to continue to your account',
                         fontSize: 14.sp,
                         color: secondHeadTextColor,
                         fontWeight: FontWeight.normal,
@@ -203,7 +205,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Log In button
                         CustomButton(
                           text: 'Log In',
+                          isEnabled: _isFormValid,
+                          isLoading: _isLoading,
+                          loadingText: 'Logging In...',
                           onTap: () async {
+                            setState(() {
+                              _isLoading = true;
+                            });
+
                             try {
                               final success = await authController.signIn(
                                 emailController.text.trim(), // Trim spaces
@@ -236,6 +245,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                     content: Text('Error: ${e.toString()}'),
                                   ),
                                 );
+                              }
+                            } finally {
+                              if (mounted) {
+                                setState(() {
+                                  _isLoading = false;
+                                });
                               }
                             }
                           },
@@ -270,17 +285,17 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ],
                         ),
-                        SizedBox(height: 12.h),
+                        // SizedBox(height: 12.h),
 
-                        // Google sign-in button
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 10.w),
-                          child: GoogleSignInButton(
-                            onPressed: () async {
-                              await authController.signInWithGoogle(context);
-                            },
-                          ),
-                        ),
+                        // // Google sign-in button
+                        // Padding(
+                        //   padding: EdgeInsets.symmetric(horizontal: 10.w),
+                        //   child: GoogleSignInButton(
+                        //     onPressed: () async {
+                        //       await authController.signInWithGoogle(context);
+                        //     },
+                        //   ),
+                        // ),
                         SizedBox(height: 18.h),
 
                         // Don't have an account? Sign up

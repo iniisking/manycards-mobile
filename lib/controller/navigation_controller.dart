@@ -13,6 +13,8 @@ class NavigationController extends ChangeNotifier {
     '/modal',
     'transfer',
     '/transfer',
+    'create_subcard',
+    '/create_subcard',
   ];
 
   // Track the previous route to handle back navigation properly

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../services/transfer_service.dart';
 import '../services/card_service.dart';
 import '../model/cards/res/get_all_cards_res.dart' as card_model;
+import 'dart:async';
 
 class TransferController extends ChangeNotifier {
   // State variables
@@ -14,8 +15,10 @@ class TransferController extends ChangeNotifier {
   bool isLoading = false;
   bool isCardLoading = false;
   bool isSuccess = false;
+  bool disposed = false;
   String? error;
-  final NumberFormat numberFormat = NumberFormat('#,##0.00', 'en_US');
+  final NumberFormat numberFormat = NumberFormat('#,##0.##', 'en_US'); // Amount fields: up to 2 dp
+  final NumberFormat rateFormat = NumberFormat('#,##0.00', 'en_US');   // Exchange rate: always 2 dp
 
   final TransferService transferService;
   final CardService cardService;
@@ -29,29 +32,53 @@ class TransferController extends ChangeNotifier {
     required this.cardService,
   });
 
+  void _safeNotifyListeners() {
+    if (!disposed) {
+      notifyListeners();
+    }
+  }
+
   // Fetch all cards and update selected cards
   Future<void> fetchCards() async {
+    if (disposed) return;
+    
     isCardLoading = true;
     error = null;
-    notifyListeners();
+    _safeNotifyListeners();
     try {
       final res = await cardService.getAllCards();
+      if (disposed) return;
+      
       cards = res.data;
       if (cards.isEmpty) {
         error = 'No cards available. Please create cards first.';
         isCardLoading = false;
-        notifyListeners();
+        _safeNotifyListeners();
         return;
+      }
+      // Only set sourceCurrency to the card with the highest balance if not already set
+      final availableCurrencies = cards.map((c) => c.currency).toSet();
+      if (!availableCurrencies.contains(sourceCurrency)) {
+        final highest = cards.reduce((a, b) => a.balance > b.balance ? a : b);
+        sourceCurrency = highest.currency;
+      }
+      // If destCurrency matches, pick a different one
+      if (destCurrency == sourceCurrency || !availableCurrencies.contains(destCurrency)) {
+        destCurrency = availableCurrencies.firstWhere((c) => c != sourceCurrency, orElse: () => sourceCurrency);
       }
       _updateSelectedCards();
       await fetchExchangeRate();
+      if (disposed) return;
+      
       isCardLoading = false;
       error = null;
-      notifyListeners();
+      _safeNotifyListeners();
     } catch (e) {
+      if (disposed) return;
+      
       isCardLoading = false;
       error = 'Failed to fetch cards: ${e.toString()}';
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
@@ -94,93 +121,148 @@ class TransferController extends ChangeNotifier {
     }
   }
 
-  void setSourceCurrency(String value) {
-    sourceCurrency = value;
-    if (sourceCurrency == destCurrency) {
-      // Find a different currency that the user has a card for
-      final availableCurrencies = cards.map((c) => c.currency).toSet();
-      final differentCurrency =
-          availableCurrencies.where((c) => c != sourceCurrency).firstOrNull;
+  // --- Robust dropdown state management ---
+  List<String> get availableCurrencies => cards.map((c) => c.currency).toSet().where((c) => c.isNotEmpty).toList();
 
-      if (differentCurrency != null) {
-        destCurrency = differentCurrency;
+  List<String> get fromCurrencies => availableCurrencies.where((c) => c != destCurrency).toList();
+  List<String> get toCurrencies => availableCurrencies.where((c) => c != sourceCurrency).toList();
+
+  String? get validSourceCurrency => fromCurrencies.contains(sourceCurrency)
+      ? sourceCurrency
+      : (fromCurrencies.isNotEmpty ? fromCurrencies.first : null);
+  String? get validDestCurrency => toCurrencies.contains(destCurrency)
+      ? destCurrency
+      : (toCurrencies.isNotEmpty ? toCurrencies.first : null);
+
+  void setSourceCurrency(String value) {
+    if (value == destCurrency) {
+      // Swap
+      final oldSource = sourceCurrency;
+      sourceCurrency = destCurrency;
+      destCurrency = oldSource;
+    } else {
+      sourceCurrency = value;
+      // If destCurrency is now invalid, pick a valid one
+      if (!toCurrencies.contains(destCurrency) && toCurrencies.isNotEmpty) {
+        destCurrency = toCurrencies.first;
       }
     }
     _updateSelectedCards();
     fetchExchangeRate();
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void setDestCurrency(String value) {
-    destCurrency = value;
-    if (destCurrency == sourceCurrency) {
-      // Find a different currency that the user has a card for
-      final availableCurrencies = cards.map((c) => c.currency).toSet();
-      final differentCurrency =
-          availableCurrencies.where((c) => c != destCurrency).firstOrNull;
-
-      if (differentCurrency != null) {
-        sourceCurrency = differentCurrency;
+    if (value == sourceCurrency) {
+      // Swap
+      final oldDest = destCurrency;
+      destCurrency = sourceCurrency;
+      sourceCurrency = oldDest;
+    } else {
+      destCurrency = value;
+      // If sourceCurrency is now invalid, pick a valid one
+      if (!fromCurrencies.contains(sourceCurrency) && fromCurrencies.isNotEmpty) {
+        sourceCurrency = fromCurrencies.first;
       }
     }
     _updateSelectedCards();
     fetchExchangeRate();
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
+  // Add editing state
+  bool _editingSource = false;
+  bool _editingDest = false;
+  Timer? _debounce;
+  String _lastSourceAmountRequested = '';
+  String _lastDestAmountRequested = '';
+
   void setSourceAmount(String value) {
+    _editingSource = true;
+    _editingDest = false;
     sourceAmount = value;
-    fetchExchangeRate();
-    notifyListeners();
+    _lastSourceAmountRequested = value;
+    debugPrint('[TransferController] setSourceAmount: $value');
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      fetchExchangeRate();
+    });
+    _safeNotifyListeners();
   }
 
   void setDestAmount(String value) {
+    _editingSource = false;
+    _editingDest = true;
     destAmount = value;
-    // For reverse conversion, swap source/dest
-    fetchExchangeRate(reverse: true);
-    notifyListeners();
+    _lastDestAmountRequested = value;
+    debugPrint('[TransferController] setDestAmount: $value');
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      fetchExchangeRate(reverse: true);
+    });
+    _safeNotifyListeners();
   }
 
   Future<void> fetchExchangeRate({bool reverse = false}) async {
+    debugPrint('[TransferController] fetchExchangeRate (reverse: $reverse)');
     if (sourceCurrency == destCurrency) {
       exchangeRate = 1.0;
       destAmount = sourceAmount;
-      notifyListeners();
+      _editingSource = false;
+      _editingDest = false;
+      debugPrint('[TransferController] Same currency, destAmount set to $destAmount');
+      _safeNotifyListeners();
       return;
     }
     try {
       isLoading = true;
-      notifyListeners();
+      _safeNotifyListeners();
       // Fetch rate for 1 unit
+      debugPrint('[TransferController] Calling convertCurrency(1.0, $sourceCurrency, $destCurrency)');
       final rateRes = await transferService.currencyService.convertCurrency(
         1.0,
         sourceCurrency,
         destCurrency,
       );
+      debugPrint('[TransferController] Rate response: ${rateRes.data.exchangeRate}');
       exchangeRate = rateRes.data.exchangeRate;
 
       double amount = 0.0;
-      if (!reverse) {
+      if (!_editingDest) { // Only update destAmount if not editing dest
         amount = double.tryParse(sourceAmount.replaceAll(',', '')) ?? 0.0;
+        final requested = _lastSourceAmountRequested;
+        debugPrint('[TransferController] Converting $amount $sourceCurrency to $destCurrency');
         if (amount > 0) {
           final convRes = await transferService.currencyService.convertCurrency(
             amount,
             sourceCurrency,
             destCurrency,
           );
-          destAmount = numberFormat.format(convRes.data.convertedAmount);
+          debugPrint('[TransferController] Conversion response: ${convRes.data.convertedAmount}');
+          // Only update if the input hasn't changed since request
+          if (requested == sourceAmount) {
+            destAmount = numberFormat.format(convRes.data.convertedAmount);
+            debugPrint('[TransferController] destAmount updated: $destAmount');
+          }
         } else {
           destAmount = '';
         }
-      } else {
+      } else if (!_editingSource) { // Only update sourceAmount if not editing source
         amount = double.tryParse(destAmount.replaceAll(',', '')) ?? 0.0;
+        final requested = _lastDestAmountRequested;
+        debugPrint('[TransferController] Converting $amount $destCurrency to $sourceCurrency');
         if (amount > 0) {
           final convRes = await transferService.currencyService.convertCurrency(
             amount,
             destCurrency,
             sourceCurrency,
           );
-          sourceAmount = numberFormat.format(convRes.data.convertedAmount);
+          debugPrint('[TransferController] Reverse conversion response: ${convRes.data.convertedAmount}');
+          // Only update if the input hasn't changed since request
+          if (requested == destAmount) {
+            sourceAmount = numberFormat.format(convRes.data.convertedAmount);
+            debugPrint('[TransferController] sourceAmount updated: $sourceAmount');
+          }
         } else {
           sourceAmount = '';
         }
@@ -188,12 +270,17 @@ class TransferController extends ChangeNotifier {
 
       isLoading = false;
       error = null;
-      notifyListeners();
+      _editingSource = false;
+      _editingDest = false;
+      _safeNotifyListeners();
     } catch (e) {
       exchangeRate = 0.0;
       isLoading = false;
       error = e.toString();
-      notifyListeners();
+      debugPrint('[TransferController] Error: $e');
+      _editingSource = false;
+      _editingDest = false;
+      _safeNotifyListeners();
     }
   }
 
@@ -224,14 +311,14 @@ class TransferController extends ChangeNotifier {
   Future<bool> performTransfer() async {
     if (sourceCard == null || destCard == null) {
       error = 'Please select valid source and destination cards';
-      notifyListeners();
+      _safeNotifyListeners();
       return false;
     }
 
     isLoading = true;
     error = null;
     isSuccess = false;
-    notifyListeners();
+    _safeNotifyListeners();
     try {
       final reqAmount =
           double.tryParse(sourceAmount.replaceAll(',', '')) ?? 0.0;
@@ -244,12 +331,12 @@ class TransferController extends ChangeNotifier {
       );
       isLoading = false;
       isSuccess = result;
-      notifyListeners();
+      _safeNotifyListeners();
       return result;
     } catch (e) {
       isLoading = false;
       error = e.toString();
-      notifyListeners();
+      _safeNotifyListeners();
       return false;
     }
   }
@@ -268,7 +355,7 @@ class TransferController extends ChangeNotifier {
     cards = [];
     sourceCard = null;
     destCard = null;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   // Computed property for form validity
@@ -281,5 +368,12 @@ class TransferController extends ChangeNotifier {
         sourceCard != null &&
         destCard != null &&
         sourceCard!.cardId != destCard!.cardId; // Ensure different cards
+  }
+
+  @override
+  void dispose() {
+    disposed = true;
+    _debounce?.cancel();
+    super.dispose();
   }
 }

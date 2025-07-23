@@ -21,6 +21,7 @@ class _ResetPasswordState extends State<ResetPassword> {
   final TextEditingController emailController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   bool _isFormValid = false;
+  bool _isLoading = false;
 
   // Email validation
   String? validateEmail(String? value) {
@@ -131,28 +132,43 @@ class _ResetPasswordState extends State<ResetPassword> {
                       // Continue button
                       CustomButton(
                         text: 'Continue',
+                        isEnabled: _isFormValid,
+                        isLoading: _isLoading,
+                        loadingText: 'Sending...',
                         onTap: () async {
                           if (_formKey.currentState?.validate() ?? false) {
-                            final success = await authController.resetPassword(
-                              emailController.text.trim(),
-                            );
+                            setState(() {
+                              _isLoading = true;
+                            });
+                            
+                            try {
+                              final success = await authController.resetPassword(
+                                emailController.text.trim(),
+                              );
 
-                            if (success && mounted) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const ConfirmReset(),
-                                ),
-                              );
-                            } else if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    authController.error ?? 'An error occurred',
+                              if (success && mounted) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const ConfirmReset(),
                                   ),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
+                                );
+                              } else if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      authController.error ?? 'An error occurred',
+                                    ),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            } finally {
+                              if (mounted) {
+                                setState(() {
+                                  _isLoading = false;
+                                });
+                              }
                             }
                           }
                         },

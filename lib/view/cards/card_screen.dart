@@ -9,9 +9,12 @@ import 'package:manycards/view/constants/widgets/cards.dart';
 import 'package:manycards/view/constants/widgets/colors.dart';
 import 'package:manycards/view/constants/widgets/currency_dropdown.dart';
 import 'package:manycards/view/constants/widgets/shimmers.dart';
+import 'package:manycards/view/constants/widgets/transaction_row_widget.dart';
 import 'package:provider/provider.dart';
 import 'package:manycards/controller/card_controller.dart';
 import 'package:manycards/controller/currency_controller.dart';
+import 'package:manycards/controller/transaction_controller.dart';
+import 'package:manycards/model/transaction history/res/get_all_transactions_res.dart';
 
 class CardScreen extends StatelessWidget {
   const CardScreen({super.key});
@@ -27,11 +30,153 @@ class CardScreen extends StatelessWidget {
     }
   }
 
+  String _formatTime(DateTime date) {
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  String _getCurrencySymbol(String currency) {
+    switch (currency.toUpperCase()) {
+      case 'USD':
+        return '\$';
+      case 'GBP':
+        return '£';
+      case 'NGN':
+        return '₦';
+      default:
+        return '';
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      return 'Today at ${_formatTime(date)}';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday at ${_formatTime(date)}';
+    } else {
+      return '${date.day}/${date.month}/${date.year} at ${_formatTime(date)}';
+    }
+  }
+
+  Widget _getTransactionIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'funding':
+      case 'top_up':
+        return Icon(
+          Icons.add_circle_outline,
+          color: fisrtHeaderTextColor,
+          size: 20.sp,
+        );
+      case 'transfer':
+        return Icon(
+          Icons.swap_horiz,
+          color: fisrtHeaderTextColor,
+          size: 20.sp,
+        );
+      case 'withdrawal':
+      case 'withdraw':
+        return Icon(
+          Icons.remove_circle_outline,
+          color: fisrtHeaderTextColor,
+          size: 20.sp,
+        );
+      case 'payment':
+        return Icon(
+          Icons.payment,
+          color: fisrtHeaderTextColor,
+          size: 20.sp,
+        );
+      default:
+        return Icon(
+          Icons.account_balance_wallet,
+          color: fisrtHeaderTextColor,
+          size: 20.sp,
+        );
+    }
+  }
+
+  String _getTransactionTitle(String type) {
+    switch (type.toLowerCase()) {
+      case 'funding':
+      case 'top_up':
+        return 'Card Funding';
+      case 'transfer':
+        return 'Transfer';
+      case 'withdrawal':
+      case 'withdraw':
+        return 'Withdrawal';
+      case 'payment':
+        return 'Payment';
+      default:
+        return 'Transaction';
+    }
+  }
+
+  String _getTransactionDescription(Transaction transaction) {
+    switch (transaction.type.toLowerCase()) {
+      case 'funding':
+      case 'top_up':
+        return 'You funded your ${transaction.currency ?? 'Card'}';
+      case 'transfer':
+        // Show destination currency instead of card ID
+        if (transaction.destinationCurrency != null) {
+          return 'Transfer to ${transaction.destinationCurrency} main card';
+        }
+        return 'Transfer to another card';
+      case 'withdrawal':
+      case 'withdraw':
+        return 'Withdrawal from your card';
+      case 'payment':
+        return 'Payment processed';
+      default:
+        return 'Transaction completed';
+    }
+  }
+
+  String _formatAmount(Transaction transaction, String currencyCode) {
+    if (transaction.type.toLowerCase() == 'transfer') {
+      // For transfers, show the debited amount with source currency
+      final amountDebited = transaction.amountDebited ?? 0;
+      final sourceCurrency = transaction.sourceCurrency ?? currencyCode;
+      
+      return '-${_getCurrencySymbol(sourceCurrency)}${(amountDebited / 100).toStringAsFixed(2)}';
+    } else {
+      // For funding/other transactions, use the standard amount and currency
+      final amount = transaction.amount ?? 0;
+      final currency = transaction.currency ?? currencyCode;
+      
+      if (transaction.type.toLowerCase() == 'funding' || 
+          transaction.type.toLowerCase() == 'top_up') {
+        return '+${_getCurrencySymbol(currency)}${(amount / 100).toStringAsFixed(2)}';
+      } else {
+        return '-${_getCurrencySymbol(currency)}${(amount / 100).toStringAsFixed(2)}';
+      }
+    }
+  }
+
+  List<Transaction> _getFilteredTransactions(
+    TransactionController transactionController,
+    String currency,
+  ) {
+    return transactionController.transactions.where((transaction) {
+      // Filter by currency - check if transaction involves this currency
+      return transaction.currency == currency ||
+             transaction.sourceCurrency == currency ||
+             transaction.destinationCurrency == currency;
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Consumer2<CardController, CurrencyController>(
-      builder: (context, cardController, currencyController, child) {
+    return Consumer3<CardController, CurrencyController, TransactionController>(
+      builder: (context, cardController, currencyController, transactionController, child) {
         final selectedCard = cardController.selectedCard;
+        final currentCurrency = cardController.currencyCode;
+        final filteredTransactions = _getFilteredTransactions(transactionController, currentCurrency);
 
         return Scaffold(
           backgroundColor: backgroundColor,
@@ -103,6 +248,11 @@ class CardScreen extends StatelessWidget {
                           balance: selectedCard.balance.toDouble(),
                           currencySymbol: cardController.currencySymbol,
                           cardNumber: selectedCard.maskedNumber,
+                          expiryDate: selectedCard.expiry,
+                          cardholderName: '****', // You can update this if you have the name
+                          isBackVisible: cardController.isCardDetailsVisible,
+                          cvv: selectedCard.cvv,
+                          fullCardNumber: selectedCard.number,
                         ),
                       SizedBox(height: 30.h),
                       Row(
@@ -119,14 +269,18 @@ class CardScreen extends StatelessWidget {
                             label: 'Top Up',
                           ),
                           QuickActionButton(
-                            onTap: () {},
+                            onTap: () {
+                              cardController.toggleCardDetailsVisibility();
+                            },
                             icon: Padding(
                               padding: EdgeInsets.all(5.sp),
-                              child: Assets.images.view.image(
-                                color: const Color(0xFFC4C4C4),
-                              ),
+                              child: cardController.isCardDetailsVisible
+                                  ? Icon(Icons.visibility_off, color: Color(0xFFC4C4C4), size: 24)
+                                  : Assets.images.view.image(
+                                      color: const Color(0xFFC4C4C4),
+                                    ),
                             ),
-                            label: 'View Details',
+                            label: cardController.isCardDetailsVisible ? 'Hide Details' : 'View Details',
                           ),
                           QuickActionButton(
                             onTap: () async {
@@ -136,7 +290,7 @@ class CardScreen extends StatelessWidget {
                                   settings: const RouteSettings(
                                     name: '/subcard',
                                   ),
-                                  builder: (context) => const SubCard(),
+                                  builder: (context) => const SubCardScreen(),
                                 ),
                               );
                               if (result == true) {
@@ -186,12 +340,40 @@ class CardScreen extends StatelessWidget {
                             return TransactionRowShimmer();
                           },
                         )
-                      else
-                        const Center(
-                          child: Text(
-                            'No transactions available',
-                            style: TextStyle(color: Colors.white),
+                      else if (filteredTransactions.isEmpty)
+                        Center(
+                          child: CustomTextWidget(
+                            text: 'No transactions available for $currentCurrency',
+                            fontSize: 14.sp,
+                            color: secondHeadTextColor,
                           ),
+                        )
+                      else
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: filteredTransactions.length,
+                          itemBuilder: (context, index) {
+                            final transaction = filteredTransactions[index];
+                            return Column(
+                              children: [
+                                TransactionRowWidget(
+                                  leadingIcon: _getTransactionIcon(transaction.type),
+                                  title: _getTransactionTitle(transaction.type),
+                                  subtitle: _formatDate(transaction.createdAt),
+                                  description: _getTransactionDescription(transaction),
+                                  amount: currencyController.isBalanceVisible
+                                      ? _formatAmount(transaction, currentCurrency)
+                                      : '* * * * * *',
+                                ),
+                                if (index < filteredTransactions.length - 1)
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                                    child: Divider(thickness: 1.h, color: actionButtonColor),
+                                  ),
+                              ],
+                            );
+                          },
                         ),
                       SizedBox(height: 75.h),
                     ],

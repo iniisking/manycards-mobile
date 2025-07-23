@@ -11,6 +11,7 @@ class CardController extends ChangeNotifier {
   CardCurrency _selectedCurrency = CardCurrency.ngn;
   List<card_model.Card> _cards = [];
   bool _isLoading = false;
+  bool _isCardDetailsVisible = false;
 
   CardController(this._currencyController, this._cardService) {
     // Listen to currency controller changes to update balances
@@ -24,6 +25,7 @@ class CardController extends ChangeNotifier {
   CardCurrency get selectedCurrency => _selectedCurrency;
   bool get isLoading => _isLoading;
   List<card_model.Card> get cards => _cards;
+  bool get isCardDetailsVisible => _isCardDetailsVisible;
 
   // Get the card for the currently selected currency
   card_model.Card? get selectedCard {
@@ -96,6 +98,11 @@ class CardController extends ChangeNotifier {
       _selectedCurrency = currency;
       notifyListeners();
     }
+  }
+
+  void toggleCardDetailsVisibility() {
+    _isCardDetailsVisible = !_isCardDetailsVisible;
+    notifyListeners();
   }
 
   Future<void> loadCards() async {

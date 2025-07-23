@@ -15,6 +15,10 @@ import 'package:manycards/services/storage_service.dart';
 import 'package:manycards/services/payment_service.dart';
 import 'package:manycards/services/currency_service.dart';
 import 'package:manycards/services/transfer_service.dart';
+import 'package:manycards/services/subcard_service.dart';
+import 'package:manycards/services/transaction_service.dart';
+import 'package:manycards/controller/subcard_controller.dart';
+import 'package:manycards/controller/transaction_controller.dart';
 import 'package:manycards/view/authentication/auth_wrapper.dart';
 
 void main() async {
@@ -27,6 +31,7 @@ void main() async {
       statusBarBrightness: Brightness.light, // For iOS
     ),
   );
+
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize SharedPreferences
@@ -82,10 +87,28 @@ class MyApp extends StatelessWidget {
               ),
         ),
 
+        //subcard service provider
+        Provider<SubcardService>(
+          create:
+              (context) => SubcardService(
+                client: http.Client(),
+                authService: context.read<AuthService>(),
+              ),
+        ),
+
         //payment provider
         Provider<PaymentService>(
           create:
               (context) => PaymentService(
+                client: http.Client(),
+                authService: context.read<AuthService>(),
+              ),
+        ),
+
+        //transaction service provider
+        Provider<TransactionService>(
+          create:
+              (context) => TransactionService(
                 client: http.Client(),
                 authService: context.read<AuthService>(),
               ),
@@ -135,6 +158,32 @@ class MyApp extends StatelessWidget {
                   cardController ??
                   CardController(currencyController, cardService),
         ),
+        
+        //subcard controller
+        ChangeNotifierProxyProvider2<
+          SubcardService,
+          CardController,
+          SubcardController
+        >(
+          create:
+              (context) => SubcardController(
+                context.read<SubcardService>(),
+                context.read<CardController>(),
+              ),
+          update:
+              (_, subcardService, cardController, subcardController) =>
+                  subcardController ??
+                  SubcardController(subcardService, cardController),
+        ),
+
+        //transaction controller
+        ChangeNotifierProvider<TransactionController>(
+          create:
+              (context) => TransactionController(
+                context.read<TransactionService>(),
+              ),
+        ),
+        
         // Add NavigationController
         ChangeNotifierProvider(create: (_) => NavigationController()),
       ],

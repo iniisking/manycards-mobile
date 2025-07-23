@@ -257,6 +257,7 @@ class AuthService extends BaseApiService {
     final response = await post(
       ApiEndpoints.forgotPassword,
       body: {'email': email},
+      requiresAuth: false, // Don't require auth for password reset
     );
     return ForgotPasswordRes.fromJson(response);
   }
@@ -269,6 +270,7 @@ class AuthService extends BaseApiService {
     final response = await post(
       ApiEndpoints.confirmForgotPassword,
       body: {'email': email, 'code': code, 'password': password},
+      requiresAuth: false, // Don't require auth for password reset confirmation
     );
     return ConfirmForgotPasswordRes.fromJson(response);
   }

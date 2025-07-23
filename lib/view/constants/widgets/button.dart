@@ -20,14 +20,14 @@ class QuickActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(40.r),
+      borderRadius: BorderRadius.circular(60.r),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
             padding: EdgeInsets.all(14.sp),
-            height: 62.h,
-            width: 62.w,
+            height: 63.h,
+            width: 63.w,
             decoration: BoxDecoration(
               color: const Color(0xFF2C2C2C),
               borderRadius: BorderRadius.circular(40.r),
@@ -37,7 +37,7 @@ class QuickActionButton extends StatelessWidget {
           SizedBox(height: 6.h),
           CustomTextWidget(
             text: label,
-            fontSize: 12.sp,
+            fontSize: 11.sp,
             color: const Color(0xFFC4C4C4),
             fontWeight: FontWeight.w500,
           ),
@@ -52,39 +52,64 @@ class CustomButton extends StatelessWidget {
   final String text;
   final Future<void> Function()? onTap;
   final Color color;
-
   final double borderRadius;
   final Color textColor;
+  final bool isEnabled;
+  final bool isLoading;
+  final String? loadingText;
 
   const CustomButton({
     super.key,
     required this.text,
     required this.onTap,
     this.color = const Color(0xFFEAEAEA),
-
     this.borderRadius = 15,
     this.textColor = const Color(0xFF121212),
+    this.isEnabled = true,
+    this.isLoading = false,
+    this.loadingText,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: isEnabled && !isLoading ? onTap : null,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
         width: double.infinity,
         decoration: BoxDecoration(
-          color: color,
+          color: isEnabled && !isLoading ? color : color.withOpacity(0.5),
           borderRadius: BorderRadius.circular(borderRadius.r),
         ),
         alignment: Alignment.center,
-        child: CustomTextWidget(
-          text: text,
-
-          color: textColor,
-          fontSize: 16.sp,
-          fontWeight: FontWeight.w700,
-        ),
+        child:
+            isLoading
+                ? Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 16.w,
+                      height: 16.h,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(textColor),
+                      ),
+                    ),
+                    SizedBox(width: 8.w),
+                    CustomTextWidget(
+                      text: loadingText ?? text,
+                      color: textColor,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ],
+                )
+                : CustomTextWidget(
+                  text: text,
+                  color: textColor,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w700,
+                ),
       ),
     );
   }

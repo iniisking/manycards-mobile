@@ -25,6 +25,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController passwordController = TextEditingController();
   bool _isFormValid = false;
   bool _termsAccepted = false;
+  bool _isLoading = false;
 
   // form validation logic
   String? validateFullName(String? value) {
@@ -147,8 +148,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                     SizedBox(height: 8.h),
                     CustomTextWidget(
-                      text:
-                          'Enter your personal details to create a ManySubs account',
+                      text: 'Enter your personal details to create an account',
                       fontSize: 14.sp,
                       color: secondHeadTextColor,
                       fontWeight: FontWeight.normal,
@@ -266,8 +266,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       SizedBox(height: 16.h),
                       CustomButton(
                         text: 'Sign Up',
+                        isEnabled: _isFormValid,
+                        isLoading: _isLoading,
+                        loadingText: 'Signing Up...',
                         onTap: () async {
                           if (_formKey.currentState?.validate() ?? false) {
+                            setState(() {
+                              _isLoading = true;
+                            });
+
                             try {
                               debugPrint('Starting sign-up process in UI...');
                               final success = await authController.signUp(
@@ -309,6 +316,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                     backgroundColor: Colors.red,
                                   ),
                                 );
+                              }
+                            } finally {
+                              if (mounted) {
+                                setState(() {
+                                  _isLoading = false;
+                                });
                               }
                             }
                           }

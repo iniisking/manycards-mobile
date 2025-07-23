@@ -2,27 +2,186 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import 'package:manycards/gen/assets.gen.dart';
+import 'package:manycards/services/card_service.dart';
+import 'package:manycards/services/transfer_service.dart';
 import 'package:manycards/view/constants/text/text.dart';
 import 'package:manycards/view/constants/widgets/colors.dart';
 import 'package:manycards/view/constants/widgets/currency_bottom_sheet.dart';
 import 'package:manycards/view/constants/widgets/button.dart';
 import 'package:manycards/view/constants/widgets/shimmers.dart';
+import 'package:manycards/view/constants/widgets/transaction_row_widget.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../controller/currency_controller.dart';
 import '../../controller/auth_controller.dart';
-import '../actions/top_up.dart';
-import '../actions/transfer.dart';
+import '../../controller/transaction_controller.dart';
+import '../transaction history/transaction_history.dart';
+import '../actions/top_up_screen.dart';
+import '../actions/transfer_screen.dart';
+import '../../controller/transfer_controller.dart';
+import '../../model/transaction history/res/get_all_transactions_res.dart';
+import '../cards/create_subcard.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final transactionController = Provider.of<TransactionController>(context, listen: false);
+      final currencyController = Provider.of<CurrencyController>(context, listen: false);
+      
+      transactionController.loadTransactions(
+        currency: currencyController.selectedCurrencyCode,
+        limit: 5,
+      );
+    });
+  }
+
+  String _formatTime(DateTime date) {
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  String _getCurrencySymbol(String currency) {
+    switch (currency.toUpperCase()) {
+      case 'USD':
+        return '\$';
+      case 'GBP':
+        return '£';
+      case 'NGN':
+        return '₦';
+      default:
+        return '';
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      return 'Today at ${_formatTime(date)}';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday at ${_formatTime(date)}';
+    } else {
+      return '${date.day}/${date.month}/${date.year} at ${_formatTime(date)}';
+    }
+  }
+
+  Widget _getTransactionIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'funding':
+      case 'top_up':
+        return Icon(
+          Icons.add_circle_outline,
+          color: fisrtHeaderTextColor,
+          size: 20.sp,
+        );
+      case 'transfer':
+        return Icon(
+          Icons.swap_horiz,
+          color: fisrtHeaderTextColor,
+          size: 20.sp,
+        );
+      case 'withdrawal':
+      case 'withdraw':
+        return Icon(
+          Icons.remove_circle_outline,
+          color: fisrtHeaderTextColor,
+          size: 20.sp,
+        );
+      case 'payment':
+        return Icon(
+          Icons.payment,
+          color: fisrtHeaderTextColor,
+          size: 20.sp,
+        );
+      default:
+        return Icon(
+          Icons.account_balance_wallet,
+          color: fisrtHeaderTextColor,
+          size: 20.sp,
+        );
+    }
+  }
+
+  String _getTransactionTitle(String type) {
+    switch (type.toLowerCase()) {
+      case 'funding':
+      case 'top_up':
+        return 'Card Funding';
+      case 'transfer':
+        return 'Transfer';
+      case 'withdrawal':
+      case 'withdraw':
+        return 'Withdrawal';
+      case 'payment':
+        return 'Payment';
+      default:
+        return 'Transaction';
+    }
+  }
+
+  String _getTransactionDescription(Transaction transaction) {
+    switch (transaction.type.toLowerCase()) {
+      case 'funding':
+      case 'top_up':
+        return 'You funded your ${transaction.currency ?? 'Card'}';
+      case 'transfer':
+        // Show destination currency instead of card ID
+        if (transaction.destinationCurrency != null) {
+          return 'Transfer to ${transaction.destinationCurrency} main card';
+        }
+        return 'Transfer to another card';
+      case 'withdrawal':
+      case 'withdraw':
+        return 'Withdrawal from your card';
+      case 'payment':
+        return 'Payment processed';
+      default:
+        return 'Transaction completed';
+    }
+  }
+
+  String _formatAmount(Transaction transaction, String currencyCode) {
+    if (transaction.type.toLowerCase() == 'transfer') {
+      // For transfers, show the debited amount with source currency
+      final amountDebited = transaction.amountDebited ?? 0;
+      final sourceCurrency = transaction.sourceCurrency ?? currencyCode;
+      
+      return '-${_getCurrencySymbol(sourceCurrency)}${(amountDebited / 100).toStringAsFixed(2)}';
+    } else {
+      // For funding/other transactions, use the standard amount and currency
+      final amount = transaction.amount ?? 0;
+      final currency = transaction.currency ?? currencyCode;
+      
+      if (transaction.type.toLowerCase() == 'funding' || 
+          transaction.type.toLowerCase() == 'top_up') {
+        return '+${_getCurrencySymbol(currency)}${(amount / 100).toStringAsFixed(2)}';
+      } else {
+        return '-${_getCurrencySymbol(currency)}${(amount / 100).toStringAsFixed(2)}';
+      }
+    }
+  }
 
   Future<void> _handleRefresh(
     BuildContext context,
     CurrencyController controller,
+    TransactionController transactionController,
   ) async {
     try {
       await controller.refreshBalances();
+      await transactionController.loadTransactions(
+        currency: controller.selectedCurrencyCode,
+      );
     } catch (e) {
       debugPrint('Refresh error: $e');
     }
@@ -50,12 +209,13 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Provider.of<CurrencyController>(context);
     final authController = Provider.of<AuthController>(context);
+    final transactionController = Provider.of<TransactionController>(context);
 
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
         child: LiquidPullToRefresh(
-          onRefresh: () => _handleRefresh(context, controller),
+          onRefresh: () => _handleRefresh(context, controller, transactionController),
           color: actionButtonColor,
           backgroundColor: fisrtHeaderTextColor,
           height: 70.h,
@@ -217,7 +377,23 @@ class HomeScreen extends StatelessWidget {
                             routeSettings: const RouteSettings(
                               name: 'transfer',
                             ),
-                            builder: (context) => const TransferScreen(),
+                            builder: (context) {
+                              return ChangeNotifierProvider<TransferController>(
+                                create:
+                                    (context) => TransferController(
+                                      transferService:
+                                          Provider.of<TransferService>(
+                                            context,
+                                            listen: false,
+                                          ),
+                                      cardService: Provider.of<CardService>(
+                                        context,
+                                        listen: false,
+                                      ),
+                                    )..fetchCards(),
+                                child: const TransferScreen(),
+                              );
+                            },
                           );
                         },
                         icon: Padding(
@@ -232,7 +408,16 @@ class HomeScreen extends StatelessWidget {
                       //create card
                       QuickActionButton(
                         onTap: () {
-                          // your tap logic here
+                          showModalBottomSheet(
+                            context: context,
+                            backgroundColor: Colors.transparent,
+                            isScrollControlled: true,
+                            constraints: BoxConstraints(
+                              maxHeight: MediaQuery.of(context).size.height,
+                            ),
+                            routeSettings: const RouteSettings(name: 'create_subcard'),
+                            builder: (context) => const CreateSubcard(),
+                          );
                         },
                         icon: Padding(
                           padding: EdgeInsets.all(1.sp),
@@ -240,10 +425,10 @@ class HomeScreen extends StatelessWidget {
                             color: actionButtonIconColor,
                           ),
                         ),
-                        label: 'Create Card',
+                        label: 'Create Subcard',
                       ),
 
-                      //withdraw
+                      // withdraw
                       QuickActionButton(
                         onTap: () {},
                         icon: Assets.images.withdraw.image(
@@ -267,7 +452,15 @@ class HomeScreen extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                       GestureDetector(
-                        onTap: () {},
+                        onTap: () {
+                          // Navigate to transaction history screen
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const TransactionHistory(),
+                            ),
+                          );
+                        },
                         child: CustomTextWidget(
                           text: 'See all',
                           fontSize: 14.sp,
@@ -278,14 +471,49 @@ class HomeScreen extends StatelessWidget {
                     ],
                   ),
                   SizedBox(height: 25.h),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: 5,
-                    itemBuilder: (context, index) {
-                      return TransactionRowShimmer();
-                    },
-                  ),
+                  transactionController.isLoading
+                      ? ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: 5,
+                          itemBuilder: (context, index) {
+                            return TransactionRowShimmer();
+                          },
+                        )
+                      : transactionController.recentTransactions.isEmpty
+                          ? Center(
+                              child: CustomTextWidget(
+                                text: 'No transactions available',
+                                fontSize: 14.sp,
+                                color: secondHeadTextColor,
+                              ),
+                            )
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: transactionController.recentTransactions.length,
+                              itemBuilder: (context, index) {
+                                final transaction = transactionController.recentTransactions[index];
+                                return Column(
+                                  children: [
+                                    TransactionRowWidget(
+                                      leadingIcon: _getTransactionIcon(transaction.type),
+                                      title: _getTransactionTitle(transaction.type),
+                                      subtitle: _formatDate(transaction.createdAt),
+                                      description: _getTransactionDescription(transaction),
+                                      amount: controller.isBalanceVisible
+                                          ? _formatAmount(transaction, controller.selectedCurrencyCode)
+                                          : '* * * * * *',
+                                    ),
+                                    if (index < transactionController.recentTransactions.length - 1)
+                                      Padding(
+                                        padding: EdgeInsets.symmetric(vertical: 8.h),
+                                        child: Divider(thickness: 1.h, color: actionButtonColor),
+                                      ),
+                                  ],
+                                );
+                              },
+                            ),
 
                   // TransactionRowWidget(
                   //   leadingIcon: Icon(

@@ -24,9 +24,32 @@ class _ConfirmResetState extends State<ConfirmReset> {
   );
   final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
   bool _isVerifying = false;
+  bool _isCodeComplete = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Add listeners to all controllers
+    for (var controller in _controllers) {
+      controller.addListener(_updateButtonState);
+    }
+  }
+
+  void _updateButtonState() {
+    final isComplete = _controllers.every((c) => c.text.isNotEmpty);
+    if (_isCodeComplete != isComplete) {
+      setState(() {
+        _isCodeComplete = isComplete;
+      });
+    }
+  }
 
   @override
   void dispose() {
+    // Remove listeners
+    for (var controller in _controllers) {
+      controller.removeListener(_updateButtonState);
+    }
     for (var controller in _controllers) {
       controller.dispose();
     }
@@ -151,8 +174,6 @@ class _ConfirmResetState extends State<ConfirmReset> {
     );
   }
 
-  bool get _isCodeComplete => _controllers.every((c) => c.text.isNotEmpty);
-
   Future<void> _verifyCode() async {
     if (!_isCodeComplete) return;
 
@@ -167,8 +188,14 @@ class _ConfirmResetState extends State<ConfirmReset> {
       );
       final code = _controllers.map((c) => c.text).join();
 
-      // Navigate to new password screen with the code
-      if (mounted) {
+      // Validate the code first
+      final isValid = await authController.validateResetCode(
+        authController.lastEmail ?? '',
+        code,
+      );
+
+      if (isValid && mounted) {
+        // Code is valid, navigate to new password screen
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -177,6 +204,16 @@ class _ConfirmResetState extends State<ConfirmReset> {
                   email: authController.lastEmail ?? '',
                   code: code,
                 ),
+          ),
+        );
+      } else if (mounted) {
+        // Code is invalid, show error
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              authController.error ?? 'Invalid verification code',
+            ),
+            backgroundColor: Colors.red,
           ),
         );
       }
@@ -242,7 +279,10 @@ class _ConfirmResetState extends State<ConfirmReset> {
               ),
               SizedBox(height: 32.h),
               CustomButton(
-                text: _isVerifying ? 'Verifying...' : 'Continue',
+                text: 'Continue',
+                isEnabled: _isCodeComplete,
+                isLoading: _isVerifying,
+                loadingText: 'Verifying...',
                 onTap: _isCodeComplete && !_isVerifying ? _verifyCode : null,
               ),
             ],

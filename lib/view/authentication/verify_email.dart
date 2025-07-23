@@ -24,6 +24,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   );
   final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
   bool _isVerifying = false;
+  bool _isCodeComplete = false;
 
   @override
   void initState() {
@@ -35,9 +36,12 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   }
 
   void _updateButtonState() {
-    setState(() {
-      // This will trigger a rebuild and update the button state
-    });
+    final isComplete = _controllers.every((c) => c.text.isNotEmpty);
+    if (_isCodeComplete != isComplete) {
+      setState(() {
+        _isCodeComplete = isComplete;
+      });
+    }
   }
 
   @override
@@ -173,8 +177,6 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     );
   }
 
-  bool get _isCodeComplete => _controllers.every((c) => c.text.isNotEmpty);
-
   Future<void> _verifyCode() async {
     if (!_isCodeComplete) return;
 
@@ -269,7 +271,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
               ),
               SizedBox(height: 32.h),
               CustomButton(
-                text: _isVerifying ? 'Verifying...' : 'Confirm Signup',
+                text: 'Confirm Signup',
+                isEnabled: _isCodeComplete,
+                isLoading: _isVerifying,
+                loadingText: 'Verifying...',
                 onTap: _isCodeComplete && !_isVerifying ? _verifyCode : null,
               ),
               SizedBox(height: 16.h),

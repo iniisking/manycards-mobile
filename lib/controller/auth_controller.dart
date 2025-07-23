@@ -135,7 +135,22 @@ class AuthController extends ChangeNotifier {
         return false;
       }
     } catch (e) {
-      _setError(e.toString());
+      // Extract just the error message, not the full exception
+      String errorMessage = 'An error occurred. Please try again.';
+      String errorString = e.toString();
+      
+      if (errorString.startsWith('Exception: ')) {
+        errorMessage = errorString.substring(11); // Remove "Exception: " prefix
+      } else {
+        errorMessage = errorString;
+      }
+      
+      // Remove quotes if present
+      if (errorMessage.startsWith('"') && errorMessage.endsWith('"')) {
+        errorMessage = errorMessage.substring(1, errorMessage.length - 1);
+      }
+      
+      _setError(errorMessage);
       return false;
     } finally {
       _setLoading(false);
@@ -177,7 +192,22 @@ class AuthController extends ChangeNotifier {
         return false;
       }
     } catch (e) {
-      _setError(e.toString());
+      // Extract just the error message, not the full exception
+      String errorMessage = 'An error occurred. Please try again.';
+      String errorString = e.toString();
+      
+      if (errorString.startsWith('Exception: ')) {
+        errorMessage = errorString.substring(11); // Remove "Exception: " prefix
+      } else {
+        errorMessage = errorString;
+      }
+      
+      // Remove quotes if present
+      if (errorMessage.startsWith('"') && errorMessage.endsWith('"')) {
+        errorMessage = errorMessage.substring(1, errorMessage.length - 1);
+      }
+      
+      _setError(errorMessage);
       return false;
     } finally {
       _setLoading(false);
@@ -268,7 +298,22 @@ class AuthController extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('Error in confirmSignUp: $e');
-      _setError(e.toString());
+      // Extract just the error message, not the full exception
+      String errorMessage = 'An error occurred. Please try again.';
+      String errorString = e.toString();
+      
+      if (errorString.startsWith('Exception: ')) {
+        errorMessage = errorString.substring(11); // Remove "Exception: " prefix
+      } else {
+        errorMessage = errorString;
+      }
+      
+      // Remove quotes if present
+      if (errorMessage.startsWith('"') && errorMessage.endsWith('"')) {
+        errorMessage = errorMessage.substring(1, errorMessage.length - 1);
+      }
+      
+      _setError(errorMessage);
       return false;
     } finally {
       _setLoading(false);
@@ -336,12 +381,33 @@ class AuthController extends ChangeNotifier {
     _setLoading(true);
     _clearError();
     try {
-      // TODO: Implement actual password reset API call
-      await Future.delayed(const Duration(seconds: 1)); // Simulate API call
-      _lastEmail = email;
-      return true;
+      final response = await _authService.forgotPassword(email: email);
+      
+      if (response.success) {
+        _lastEmail = email;
+        debugPrint('Password reset email sent successfully');
+        return true;
+      } else {
+        _setError(response.message);
+        return false;
+      }
     } catch (e) {
-      _setError(e.toString());
+      // Extract just the error message, not the full exception
+      String errorMessage = 'An error occurred. Please try again.';
+      String errorString = e.toString();
+      
+      if (errorString.startsWith('Exception: ')) {
+        errorMessage = errorString.substring(11); // Remove "Exception: " prefix
+      } else {
+        errorMessage = errorString;
+      }
+      
+      // Remove quotes if present
+      if (errorMessage.startsWith('"') && errorMessage.endsWith('"')) {
+        errorMessage = errorMessage.substring(1, errorMessage.length - 1);
+      }
+      
+      _setError(errorMessage);
       return false;
     } finally {
       _setLoading(false);
@@ -357,6 +423,49 @@ class AuthController extends ChangeNotifier {
       throw UnimplementedError('Google Sign In not implemented yet');
     } catch (e) {
       _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Validate Reset Code
+  Future<bool> validateResetCode(String email, String code) async {
+    _setLoading(true);
+    _clearError();
+    try {
+      // We'll use a temporary password to validate the code
+      // This is a workaround since there's no separate validation endpoint
+      final response = await _authService.confirmForgotPassword(
+        email: email,
+        code: code,
+        password: 'temp_validation_123!@#',
+      );
+
+      if (response.success) {
+        debugPrint('Code validation successful');
+        return true;
+      } else {
+        _setError(response.message);
+        return false;
+      }
+    } catch (e) {
+      // Extract just the error message, not the full exception
+      String errorMessage = 'An error occurred. Please try again.';
+      String errorString = e.toString();
+      
+      if (errorString.startsWith('Exception: ')) {
+        errorMessage = errorString.substring(11); // Remove "Exception: " prefix
+      } else {
+        errorMessage = errorString;
+      }
+      
+      // Remove quotes if present
+      if (errorMessage.startsWith('"') && errorMessage.endsWith('"')) {
+        errorMessage = errorMessage.substring(1, errorMessage.length - 1);
+      }
+      
+      _setError(errorMessage);
+      return false;
     } finally {
       _setLoading(false);
     }
@@ -385,7 +494,22 @@ class AuthController extends ChangeNotifier {
         return false;
       }
     } catch (e) {
-      _setError(e.toString());
+      // Extract just the error message, not the full exception
+      String errorMessage = 'An error occurred. Please try again.';
+      String errorString = e.toString();
+      
+      if (errorString.startsWith('Exception: ')) {
+        errorMessage = errorString.substring(11); // Remove "Exception: " prefix
+      } else {
+        errorMessage = errorString;
+      }
+      
+      // Remove quotes if present
+      if (errorMessage.startsWith('"') && errorMessage.endsWith('"')) {
+        errorMessage = errorMessage.substring(1, errorMessage.length - 1);
+      }
+      
+      _setError(errorMessage);
       return false;
     } finally {
       _setLoading(false);

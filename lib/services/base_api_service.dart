@@ -17,8 +17,8 @@ abstract class BaseApiService {
   static const String _service = 'execute-api';
 
   // AWS credentials
-  final String _accessKey = 'AKIA24VI23NWMJG7HVS6';
-  final String _secretKey = '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';
+  final String _accessKey = 'AKIAW7W2W2HRIUWEX74S';
+  final String _secretKey = '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';
 
   final bool _debugMode = true;
 
@@ -32,8 +32,9 @@ abstract class BaseApiService {
     String method,
     String path,
     Map<String, String> headers,
-    String payload,
-  ) {
+    String payload, {
+    Map<String, String>? queryParameters,
+  }) {
     final canonicalHeaders = Map<String, String>.fromEntries(
       headers.entries.map((e) => MapEntry(e.key.toLowerCase(), e.value.trim())),
     );
@@ -49,10 +50,20 @@ abstract class BaseApiService {
     final signedHeaders = sortedHeaders.map((e) => e.key).join(';');
     final payloadHash = sha256.convert(utf8.encode(payload)).toString();
 
+    // Build canonical query string
+    String canonicalQueryString = '';
+    if (queryParameters != null && queryParameters.isNotEmpty) {
+      final sortedQueryParams = queryParameters.entries.toList()
+        ..sort((a, b) => a.key.compareTo(b.key));
+      canonicalQueryString = sortedQueryParams
+          .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+          .join('&');
+    }
+
     final canonicalRequest = [
       method,
       path,
-      '', // canonical query string (empty)
+      canonicalQueryString,
       canonicalHeadersStr,
       signedHeaders,
       payloadHash,
@@ -99,8 +110,9 @@ abstract class BaseApiService {
     String method,
     String path,
     Map<String, String> headers,
-    String payload,
-  ) {
+    String payload, {
+    Map<String, String>? queryParameters,
+  }) {
     final timestamp = DateFormat(
       "yyyyMMdd'T'HHmmss'Z'",
     ).format(DateTime.now().toUtc());
@@ -115,6 +127,7 @@ abstract class BaseApiService {
       path,
       requestHeaders,
       payload,
+      queryParameters: queryParameters,
     );
 
     final stringToSign = _getStringToSign(canonicalRequest, timestamp);
@@ -150,6 +163,7 @@ abstract class BaseApiService {
     final headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'User-Agent': 'ManyCards/1.0',
     };
 
     if (requiresAuth && _authService != null) {
@@ -167,6 +181,7 @@ abstract class BaseApiService {
     Map<String, dynamic>? body,
     Map<String, String>? headers,
     bool requiresAuth = true,
+    bool useAwsSignature = false,
   }) async {
     final url = endpoint;
     _logDebug('POST REQUEST to $url');
@@ -185,6 +200,8 @@ abstract class BaseApiService {
         if (cognitoToken != null) {
           requestHeaders['Authorization'] = 'Bearer $cognitoToken';
           _logDebug('Added Authorization header with token: $cognitoToken');
+          _logDebug('Token length: ${cognitoToken.length}');
+          _logDebug('Token starts with: ${cognitoToken.substring(0, 20)}...');
         } else {
           _logDebug(
             'Warning: No Cognito token available for authenticated request',
@@ -192,15 +209,19 @@ abstract class BaseApiService {
         }
       }
 
-      // Add AWS signature
-      final signedHeaders = _getSignedHeaders(
-        'POST',
-        Uri.parse(url).path,
-        requestHeaders,
-        payload,
-      );
-      // Use x-aws-signature header instead of Authorization
-      requestHeaders['x-aws-signature'] = signedHeaders['Authorization']!;
+      if (useAwsSignature) {
+        // Add AWS signature
+        final signedHeaders = _getSignedHeaders(
+          'POST',
+          Uri.parse(url).path,
+          requestHeaders,
+          payload,
+        );
+        // Replace Authorization header with AWS signature
+        requestHeaders['Authorization'] = signedHeaders['Authorization']!;
+        requestHeaders['X-Amz-Date'] = signedHeaders['X-Amz-Date']!;
+        requestHeaders['Content-Type'] = signedHeaders['Content-Type']!;
+      }
     }
 
     _logDebug('HEADERS: $requestHeaders');
@@ -217,7 +238,8 @@ abstract class BaseApiService {
       return handleApiResponse(response);
     } catch (e) {
       _logDebug('Unexpected error: $e');
-      throw Exception('Unexpected error: $e');
+      // Don't wrap the exception again, just rethrow it
+      rethrow;
     }
   }
 
@@ -226,6 +248,8 @@ abstract class BaseApiService {
     Map<String, String>? headers,
     Map<String, dynamic>? queryParameters,
     bool requiresAuth = true,
+    bool useAwsSignature = false,
+    String? directToken,
   }) async {
     final url = endpoint;
     _logDebug('GET REQUEST to $url');
@@ -247,27 +271,40 @@ abstract class BaseApiService {
     if (requiresAuth) {
       // Add Cognito token if available
       String? cognitoToken;
-      if (_authService != null) {
+      if (directToken != null) {
+        cognitoToken = directToken;
+        _logDebug('Using direct token: ${cognitoToken.substring(0, 20)}...');
+      } else if (_authService != null) {
         cognitoToken = await _authService.getAuthToken();
         if (cognitoToken != null) {
-          requestHeaders['Authorization'] = 'Bearer $cognitoToken';
           _logDebug('Added Authorization header with token: $cognitoToken');
+          _logDebug('Token length: ${cognitoToken.length}');
+          _logDebug('Token starts with: ${cognitoToken.substring(0, 20)}...');
         } else {
           _logDebug(
             'Warning: No Cognito token available for authenticated request',
           );
         }
       }
+      
+      if (cognitoToken != null) {
+        requestHeaders['Authorization'] = 'Bearer $cognitoToken';
+      }
 
-      // Add AWS signature
-      final signedHeaders = _getSignedHeaders(
-        'GET',
-        path,
-        requestHeaders,
-        payload,
-      );
-      // Use x-aws-signature header instead of Authorization
-      requestHeaders['x-aws-signature'] = signedHeaders['Authorization']!;
+      if (useAwsSignature) {
+        // Add AWS signature
+        final signedHeaders = _getSignedHeaders(
+          'GET',
+          path,
+          requestHeaders,
+          payload,
+          queryParameters: stringQueryParams,
+        );
+        // Replace Authorization header with AWS signature
+        requestHeaders['Authorization'] = signedHeaders['Authorization']!;
+        requestHeaders['X-Amz-Date'] = signedHeaders['X-Amz-Date']!;
+        requestHeaders['Content-Type'] = signedHeaders['Content-Type']!;
+      }
     }
 
     _logDebug('HEADERS: $requestHeaders');
@@ -284,7 +321,8 @@ abstract class BaseApiService {
       return handleApiResponse(response);
     } catch (e) {
       _logDebug('Unexpected error: $e');
-      throw Exception('Unexpected error: $e');
+      // Don't wrap the exception again, just rethrow it
+      rethrow;
     }
   }
 
@@ -299,16 +337,18 @@ abstract class BaseApiService {
         case 200:
           return decodedResponse;
         case 400:
-          throw Exception('Bad request: ${response.body}');
+          final errorMessage = _extractErrorMessage(decodedResponse);
+          throw Exception(errorMessage);
         case 401:
         case 403:
-          throw Exception('Authentication failed: ${response.body}');
+          final errorMessage = _extractErrorMessage(decodedResponse);
+          throw Exception(errorMessage);
         case 500:
-          throw Exception('Server error: ${response.body}');
+          final errorMessage = _extractErrorMessage(decodedResponse);
+          throw Exception(errorMessage);
         default:
-          throw Exception(
-            'Request failed with status: ${response.statusCode}, body: ${response.body}',
-          );
+          final errorMessage = _extractErrorMessage(decodedResponse);
+          throw Exception(errorMessage);
       }
     } catch (e) {
       if (e is FormatException) {
@@ -316,5 +356,32 @@ abstract class BaseApiService {
       }
       rethrow;
     }
+  }
+
+  String _extractErrorMessage(dynamic response) {
+    if (response is Map<String, dynamic>) {
+      // Try to extract message from common error response formats
+      if (response.containsKey('message')) {
+        return response['message'] as String;
+      }
+      if (response.containsKey('error')) {
+        final error = response['error'];
+        if (error is String) {
+          return error;
+        }
+        if (error is Map<String, dynamic> && error.containsKey('message')) {
+          return error['message'] as String;
+        }
+      }
+      if (response.containsKey('detail')) {
+        return response['detail'] as String;
+      }
+      if (response.containsKey('error_message')) {
+        return response['error_message'] as String;
+      }
+      // If no specific error message found, return a generic message
+      return 'An error occurred. Please try again.';
+    }
+    return 'An error occurred. Please try again.';
   }
 }

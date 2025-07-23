@@ -1,48 +1,40 @@
 class ApiEndpoints {
   //authentication endpoints
   static const String signUp =
-      'https://cpah6106v7.execute-api.us-east-1.amazonaws.com/prod/signup';
+      'https://5tbf0gkug4.execute-api.us-east-1.amazonaws.com/prod/signup';
   static const String confirmSignUp =
-      'https://cpah6106v7.execute-api.us-east-1.amazonaws.com/prod/confirm-signup';
+      'https://5tbf0gkug4.execute-api.us-east-1.amazonaws.com/prod/confirm-signup';
   static const String login =
-      'https://rqr7k2vd9k.execute-api.us-east-1.amazonaws.com/prod/login';
+      'https://dy3dlxbv5h.execute-api.us-east-1.amazonaws.com/prod/login';
   static const String forgotPassword =
-      'https://dlyu9xdhg9.execute-api.us-east-1.amazonaws.com/prod/forgot-password';
+      'https://zosnt5scng.execute-api.us-east-1.amazonaws.com/prod/forgot-password';
   static const String confirmForgotPassword =
-      'https://dlyu9xdhg9.execute-api.us-east-1.amazonaws.com/prod/confirm-forgot-password';
+      'https://zosnt5scng.execute-api.us-east-1.amazonaws.com/prod/confirm-forgot-password';
 
-  //card endpoints
-  static const String getAllCards =
-      'https://0o9v8c0su1.execute-api.us-east-1.amazonaws.com/prod/list-all-cards';
-  static const String generateCard =
-      'https://0o9v8c0su1.execute-api.us-east-1.amazonaws.com/prod/generate-card';
-  static const String getCardById =
-      'https://0o9v8c0su1.execute-api.us-east-1.amazonaws.com/prod/get-card';
-  static const String transferFunds =
-      'https://0o9v8c0su1.execute-api.us-east-1.amazonaws.com/prod/transfer-funds';
-  static const String lockCard =
-      'https://0o9v8c0su1.execute-api.us-east-1.amazonaws.com/prod/lock-card';
+  static const String baseUrl =
+      'https://mn5rfaqybd.execute-api.us-east-1.amazonaws.com/prod';
 
-  //subcard endpoints
-  static const String createSubcard =
-      'https://0o9v8c0su1.execute-api.us-east-1.amazonaws.com/prod/create-sub-card';
-  static const String getAllSubcards =
-      'https://0o9v8c0su1.execute-api.us-east-1.amazonaws.com/prod/get-all-sub-cards';
-  static const String getSubcardById =
-      'https://0o9v8c0su1.execute-api.us-east-1.amazonaws.com/prod/get-sub-card-id';
-  static const String updateSubcard =
-      'https://0o9v8c0su1.execute-api.us-east-1.amazonaws.com/prod/update-sub-card';
+  // Card endpoints
+  static const String getAllCards = '$baseUrl/list-all-cards';
+  static const String generateCard = '$baseUrl/generate-card';
+  static const String getCardById = '$baseUrl/get-card';
+  static const String transferFunds = '$baseUrl/transfer-funds';
+  static const String lockCard = '$baseUrl/lock-card';
 
-  //currency endpoints
-  static const String getTotalBalance =
-      'https://0o9v8c0su1.execute-api.us-east-1.amazonaws.com/prod/total-balance';
+  // Sub-card endpoints
+  static const String createSubcard = '$baseUrl/create-sub-card';
+  static const String getAllSubcards = '$baseUrl/get-all-sub-cards';
+  static const String getSubcardById = '$baseUrl/get-sub-card';
+  static const String updateSubcard = '$baseUrl/update-sub-card';
 
-  static const String convertCurrency =
-      'https://0o9v8c0su1.execute-api.us-east-1.amazonaws.com/prod/convert';
+  // Currency endpoints
+  static const String getTotalBalance = '$baseUrl/total-balance';
+  static const String convertCurrency = '$baseUrl/convert';
 
-  //payment endpoints
-  static const String fundAccount =
-      'https://0o9v8c0su1.execute-api.us-east-1.amazonaws.com/prod/fund-account';
-  static const String paystackWebhook =
-      'https://0o9v8c0su1.execute-api.us-east-1.amazonaws.com/prod/paystack-webhook';
+  // Payment endpoints
+  static const String fundAccount = '$baseUrl/fund-account';
+  static const String paystackWebhook = '$baseUrl/paystack-webhook';
+
+  // Transaction endpoints
+  static const String getAllTransactions = '$baseUrl/get-all-transactions';
 }

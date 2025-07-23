@@ -25,22 +25,46 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isFormValid = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Add listeners to track form changes
+    _passwordController.addListener(_validateForm);
+    _confirmPasswordController.addListener(_validateForm);
+  }
+
+  void _validateForm() {
+    final isValid = _passwordController.text.isNotEmpty &&
+        _confirmPasswordController.text.isNotEmpty &&
+        _passwordController.text == _confirmPasswordController.text;
+
+    if (_isFormValid != isValid) {
+      setState(() {
+        _isFormValid = isValid;
+      });
+    }
+  }
 
   @override
   void dispose() {
+    // Remove listeners
+    _passwordController.removeListener(_validateForm);
+    _confirmPasswordController.removeListener(_validateForm);
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  bool get _isFormValid {
+  bool get _isFormValidComputed {
     return _passwordController.text.isNotEmpty &&
         _confirmPasswordController.text.isNotEmpty &&
         _passwordController.text == _confirmPasswordController.text;
   }
 
   Future<void> _resetPassword() async {
-    if (!_isFormValid) return;
+    if (!_isFormValidComputed) return;
 
     setState(() {
       _isLoading = true;
@@ -72,6 +96,24 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
           context,
           MaterialPageRoute(builder: (context) => const LoginScreen()),
           (route) => false,
+        );
+      } else if (mounted) {
+        // Check if the error is related to invalid code
+        final errorMessage = authController.error ?? 'Password reset failed';
+        String displayMessage = errorMessage;
+        
+        // If the error mentions code or verification, it's likely an invalid code
+        if (errorMessage.toLowerCase().contains('code') || 
+            errorMessage.toLowerCase().contains('verification') ||
+            errorMessage.toLowerCase().contains('invalid')) {
+          displayMessage = 'Invalid verification code. Please check your email and try again.';
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(displayMessage),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } catch (e) {
@@ -195,7 +237,10 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
               ),
               SizedBox(height: 32.h),
               CustomButton(
-                text: _isLoading ? 'Resetting...' : 'Reset Password',
+                text: 'Reset Password',
+                isEnabled: _isFormValid,
+                isLoading: _isLoading,
+                loadingText: 'Resetting...',
                 onTap: _isFormValid && !_isLoading ? _resetPassword : null,
               ),
             ],
