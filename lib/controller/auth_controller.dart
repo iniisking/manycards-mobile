@@ -19,9 +19,11 @@ class AuthController extends ChangeNotifier {
   LoginRes? _user;
   String? _lastEmail;
   String? _firstName;
+  String? _lastName;
   String? _lastPassword;
 
   static const String _firstNameKey = 'user_first_name';
+  static const String _lastNameKey = 'user_last_name';
 
   AuthController(
     this._authService,
@@ -42,6 +44,7 @@ class AuthController extends ChangeNotifier {
   LoginRes? get user => _user;
   String? get lastEmail => _lastEmail;
   String get firstName => _firstName ?? 'User';
+  String get lastName => _lastName ?? '';
 
   // Add a public getter for the auth token
   Future<String?> get authToken async => await _authService.getAuthToken();
@@ -88,7 +91,15 @@ class AuthController extends ChangeNotifier {
           final claims = _decodeToken(token);
           if (claims != null) {
             _firstName = claims['given_name'] as String?;
+            _lastName = claims['family_name'] as String?;
+            if (_firstName != null) {
+              await _prefs.setString(_firstNameKey, _firstName!);
+            }
+            if (_lastName != null) {
+              await _prefs.setString(_lastNameKey, _lastName!);
+            }
             debugPrint('Loaded first name from token: $_firstName');
+            debugPrint('Loaded last name from token: $_lastName');
           }
         }
         _isEmailVerified = true;
@@ -126,9 +137,12 @@ class AuthController extends ChangeNotifier {
       if (response.success) {
         _lastEmail = email;
         _firstName = nameParts[0];
+        _lastName = nameParts[1];
         // Store first name in SharedPreferences
         await _prefs.setString(_firstNameKey, _firstName!);
+        await _prefs.setString(_lastNameKey, _lastName!);
         debugPrint('Stored first name in SharedPreferences: $_firstName');
+        debugPrint('Stored last name in SharedPreferences: $_lastName');
         return true;
       } else {
         _setError(response.message);
@@ -138,18 +152,18 @@ class AuthController extends ChangeNotifier {
       // Extract just the error message, not the full exception
       String errorMessage = 'An error occurred. Please try again.';
       String errorString = e.toString();
-      
+
       if (errorString.startsWith('Exception: ')) {
         errorMessage = errorString.substring(11); // Remove "Exception: " prefix
       } else {
         errorMessage = errorString;
       }
-      
+
       // Remove quotes if present
       if (errorMessage.startsWith('"') && errorMessage.endsWith('"')) {
         errorMessage = errorMessage.substring(1, errorMessage.length - 1);
       }
-      
+
       _setError(errorMessage);
       return false;
     } finally {
@@ -177,7 +191,15 @@ class AuthController extends ChangeNotifier {
           final claims = _decodeToken(token!);
           if (claims != null) {
             _firstName = claims['given_name'] as String?;
+            _lastName = claims['family_name'] as String?;
+            if (_firstName != null) {
+              await _prefs.setString(_firstNameKey, _firstName!);
+            }
+            if (_lastName != null) {
+              await _prefs.setString(_lastNameKey, _lastName!);
+            }
             debugPrint('Extracted first name from token: $_firstName');
+            debugPrint('Extracted last name from token: $_lastName');
           } else {
             debugPrint('Failed to decode token or extract given_name');
           }
@@ -195,18 +217,18 @@ class AuthController extends ChangeNotifier {
       // Extract just the error message, not the full exception
       String errorMessage = 'An error occurred. Please try again.';
       String errorString = e.toString();
-      
+
       if (errorString.startsWith('Exception: ')) {
         errorMessage = errorString.substring(11); // Remove "Exception: " prefix
       } else {
         errorMessage = errorString;
       }
-      
+
       // Remove quotes if present
       if (errorMessage.startsWith('"') && errorMessage.endsWith('"')) {
         errorMessage = errorMessage.substring(1, errorMessage.length - 1);
       }
-      
+
       _setError(errorMessage);
       return false;
     } finally {
@@ -301,18 +323,18 @@ class AuthController extends ChangeNotifier {
       // Extract just the error message, not the full exception
       String errorMessage = 'An error occurred. Please try again.';
       String errorString = e.toString();
-      
+
       if (errorString.startsWith('Exception: ')) {
         errorMessage = errorString.substring(11); // Remove "Exception: " prefix
       } else {
         errorMessage = errorString;
       }
-      
+
       // Remove quotes if present
       if (errorMessage.startsWith('"') && errorMessage.endsWith('"')) {
         errorMessage = errorMessage.substring(1, errorMessage.length - 1);
       }
-      
+
       _setError(errorMessage);
       return false;
     } finally {
@@ -348,7 +370,7 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  // Logout
+  // Logout (handles all sign-out logic)
   Future<void> logout() async {
     _setLoading(true);
     try {
@@ -356,6 +378,7 @@ class AuthController extends ChangeNotifier {
       // Clear all state
       _user = null;
       _firstName = null;
+      _lastName = null;
       _isLoggedIn = false;
       _isEmailVerified = false;
       _lastEmail = null;
@@ -363,18 +386,19 @@ class AuthController extends ChangeNotifier {
 
       // Clear from SharedPreferences
       await _prefs.remove(_firstNameKey);
+      await _prefs.remove(_lastNameKey);
       debugPrint('AuthController: Cleared all auth state');
 
       notifyListeners();
     } catch (e) {
       _setError(e.toString());
     } finally {
-      _setLoading(false);
+      // Show loading for a short period, then hide
+      Future.delayed(const Duration(seconds: 1), () {
+        _setLoading(false);
+      });
     }
   }
-
-  // Sign Out (alias for logout)
-  Future<void> signOut() async => logout();
 
   // Reset Password
   Future<bool> resetPassword(String email) async {
@@ -382,7 +406,7 @@ class AuthController extends ChangeNotifier {
     _clearError();
     try {
       final response = await _authService.forgotPassword(email: email);
-      
+
       if (response.success) {
         _lastEmail = email;
         debugPrint('Password reset email sent successfully');
@@ -395,34 +419,20 @@ class AuthController extends ChangeNotifier {
       // Extract just the error message, not the full exception
       String errorMessage = 'An error occurred. Please try again.';
       String errorString = e.toString();
-      
+
       if (errorString.startsWith('Exception: ')) {
         errorMessage = errorString.substring(11); // Remove "Exception: " prefix
       } else {
         errorMessage = errorString;
       }
-      
+
       // Remove quotes if present
       if (errorMessage.startsWith('"') && errorMessage.endsWith('"')) {
         errorMessage = errorMessage.substring(1, errorMessage.length - 1);
       }
-      
+
       _setError(errorMessage);
       return false;
-    } finally {
-      _setLoading(false);
-    }
-  }
-
-  // Google Sign In
-  Future<void> signInWithGoogle(BuildContext context) async {
-    _setLoading(true);
-    _clearError();
-    try {
-      // TODO: Implement Google Sign In
-      throw UnimplementedError('Google Sign In not implemented yet');
-    } catch (e) {
-      _setError(e.toString());
     } finally {
       _setLoading(false);
     }
@@ -452,18 +462,18 @@ class AuthController extends ChangeNotifier {
       // Extract just the error message, not the full exception
       String errorMessage = 'An error occurred. Please try again.';
       String errorString = e.toString();
-      
+
       if (errorString.startsWith('Exception: ')) {
         errorMessage = errorString.substring(11); // Remove "Exception: " prefix
       } else {
         errorMessage = errorString;
       }
-      
+
       // Remove quotes if present
       if (errorMessage.startsWith('"') && errorMessage.endsWith('"')) {
         errorMessage = errorMessage.substring(1, errorMessage.length - 1);
       }
-      
+
       _setError(errorMessage);
       return false;
     } finally {
@@ -497,18 +507,18 @@ class AuthController extends ChangeNotifier {
       // Extract just the error message, not the full exception
       String errorMessage = 'An error occurred. Please try again.';
       String errorString = e.toString();
-      
+
       if (errorString.startsWith('Exception: ')) {
         errorMessage = errorString.substring(11); // Remove "Exception: " prefix
       } else {
         errorMessage = errorString;
       }
-      
+
       // Remove quotes if present
       if (errorMessage.startsWith('"') && errorMessage.endsWith('"')) {
         errorMessage = errorMessage.substring(1, errorMessage.length - 1);
       }
-      
+
       _setError(errorMessage);
       return false;
     } finally {

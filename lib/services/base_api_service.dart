@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:crypto/crypto.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:manycards/services/auth_service.dart';
 
 abstract class BaseApiService {
@@ -13,14 +14,14 @@ abstract class BaseApiService {
   BaseApiService({required this.client, AuthService? authService})
     : _authService = authService;
 
-  static const String _region = 'us-east-1';
-  static const String _service = 'execute-api';
+  static String get _region => dotenv.env['AWS_REGION'] ?? 'us-east-1';
+  static String get _service => dotenv.env['AWS_SERVICE'] ?? 'execute-api';
 
   // AWS credentials
-  final String _accessKey = 'AKIAW7W2W2HRIUWEX74S';
-  final String _secretKey = '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';
+  final String _accessKey = dotenv.env['AWS_ACCESS_KEY_ID'] ?? '';
+  final String _secretKey = dotenv.env['AWS_SECRET_ACCESS_KEY'] ?? '';
 
-  final bool _debugMode = true;
+  final bool _debugMode = dotenv.env['DEBUG_MODE'] == 'true';
 
   void _logDebug(String message) {
     if (_debugMode) {
@@ -163,7 +164,7 @@ abstract class BaseApiService {
     final headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      'User-Agent': 'ManyCards/1.0',
+      'User-Agent': dotenv.env['USER_AGENT'] ?? 'ManyCards/1.0',
     };
 
     if (requiresAuth && _authService != null) {
@@ -229,7 +230,7 @@ abstract class BaseApiService {
     try {
       final response = await client
           .post(Uri.parse(url), headers: requestHeaders, body: payload)
-          .timeout(Duration(seconds: 15));
+          .timeout(Duration(seconds: int.parse(dotenv.env['API_TIMEOUT_SECONDS'] ?? '15')));
 
       _logDebug('RESPONSE STATUS: ${response.statusCode}');
       _logDebug('RESPONSE HEADERS: ${response.headers}');
@@ -312,7 +313,7 @@ abstract class BaseApiService {
     try {
       final response = await client
           .get(uri, headers: requestHeaders)
-          .timeout(Duration(seconds: 15));
+          .timeout(Duration(seconds: int.parse(dotenv.env['API_TIMEOUT_SECONDS'] ?? '15')));
 
       _logDebug('RESPONSE STATUS: ${response.statusCode}');
       _logDebug('RESPONSE HEADERS: ${response.headers}');

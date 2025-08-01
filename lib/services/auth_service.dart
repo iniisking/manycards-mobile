@@ -15,19 +15,26 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:manycards/services/card_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AuthService extends BaseApiService {
   final StorageService _storageService;
-  static const String _tokenKey = 'auth_token';
-  static const String _ngnCardIdKey = 'ngn_card_id';
+  final SharedPreferences _prefs;
+
+  AuthService({
+    required super.client,
+    required StorageService storageService,
+    required SharedPreferences prefs,
+  }) : _storageService = storageService,
+       _prefs = prefs;
+
+  static String get _tokenKey => dotenv.env['STORAGE_AUTH_TOKEN_KEY'] ?? 'auth_token';
+  static String get _ngnCardIdKey => dotenv.env['STORAGE_NGN_CARD_ID_KEY'] ?? 'ngn_card_id';
   String? _token;
   String? _ngnCardId;
   String? _userId;
   String? _email;
   String? _phone;
-
-  AuthService({required super.client, StorageService? storageService})
-    : _storageService = storageService ?? StorageService();
 
   String? get token => _token;
   String? get ngnCardId => _ngnCardId;
@@ -78,8 +85,7 @@ class AuthService extends BaseApiService {
   }
 
   Future<void> initialize() async {
-    final prefs = await SharedPreferences.getInstance();
-    _token = prefs.getString(_tokenKey);
+    _token = _prefs.getString(_tokenKey);
     _ngnCardId = await _storageService.getToken(_ngnCardIdKey);
 
     if (_token != null) {
@@ -98,7 +104,7 @@ class AuthService extends BaseApiService {
           print('Found NGN card ID from cards: $_ngnCardId');
 
           if (_ngnCardId != null) {
-            await prefs.setString(_ngnCardIdKey, _ngnCardId!);
+            await _prefs.setString(_ngnCardIdKey, _ngnCardId!);
             await _storageService.saveToken(_ngnCardIdKey, _ngnCardId!);
             print('NGN card ID set in AuthService: $_ngnCardId');
           }
@@ -132,9 +138,22 @@ class AuthService extends BaseApiService {
           print(
             'Token is expired! Current time: ${_formatTimestamp(now)}, Expiration: ${_formatTimestamp(claims['exp'])}',
           );
-          // TODO: Implement token refresh
-          await clearAuthToken();
-          return null;
+          // Attempt to refresh the token
+          try {
+            final refreshedToken = await refreshToken();
+            if (refreshedToken != null) {
+              print('Token refreshed successfully');
+              return refreshedToken;
+            } else {
+              print('Token refresh failed, clearing auth data');
+              await clearAuthToken();
+              return null;
+            }
+          } catch (e) {
+            print('Error refreshing token: $e');
+            await clearAuthToken();
+            return null;
+          }
         }
       }
     }
@@ -151,8 +170,45 @@ class AuthService extends BaseApiService {
     return token != null;
   }
 
-  Future<void> refreshToken() async {
-    throw UnimplementedError('Token refresh not implemented');
+  Future<String?> refreshToken() async {
+    try {
+      // Call the backend to refresh the token
+      // This assumes you have a refresh token endpoint
+      final response = await post(
+        ApiEndpoints.refreshToken,
+        body: {
+          'refresh_token': await _storageService.getToken('refresh_token'),
+        },
+        requiresAuth: false,
+      );
+      
+      if (response['success'] == true && response['token'] != null) {
+        final newToken = response['token'] as String;
+        
+        // Decode and validate the new token
+        final claims = _decodeToken(newToken);
+        if (claims != null) {
+          // Save the new token
+          await _storageService.saveToken(_tokenKey, newToken);
+          await _prefs.setString(_tokenKey, newToken);
+          _token = newToken;
+          
+          // Save refresh token if provided
+          if (response['refresh_token'] != null) {
+            await _storageService.saveToken('refresh_token', response['refresh_token']);
+          }
+          
+          print('Token refreshed successfully');
+          return newToken;
+        }
+      }
+      
+      print('Token refresh failed: Invalid response');
+      return null;
+    } catch (e) {
+      print('Error refreshing token: $e');
+      return null;
+    }
   }
 
   Future<SignUpRes> signUp(SignUpReq request) async {
@@ -300,8 +356,18 @@ class AuthService extends BaseApiService {
     return headers;
   }
 
-  // Future<void> resendVerificationEmail() async {
-  //   // TODO: Implement resend verification email API call
-  //   throw UnimplementedError('Resend verification email not implemented yet');
-  // }
+  Future<Map<String, dynamic>> resendVerificationEmail({required String email}) async {
+    try {
+      final response = await post(
+        ApiEndpoints.resendVerificationEmail,
+        body: {'email': email},
+        requiresAuth: false,
+      );
+      
+      return response;
+    } catch (e) {
+      print('Error resending verification email: $e');
+      rethrow;
+    }
+  }
 }

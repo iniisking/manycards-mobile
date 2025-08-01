@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:manycards/controller/currency_controller.dart';
 import 'package:manycards/controller/auth_controller.dart';
 import 'package:manycards/controller/card_controller.dart';
@@ -33,6 +34,8 @@ void main() async {
   );
 
   WidgetsFlutterBinding.ensureInitialized();
+  // Load environment variables
+  await dotenv.load(fileName: ".env");
 
   // Initialize SharedPreferences
   final prefs = await SharedPreferences.getInstance();
@@ -57,6 +60,7 @@ class MyApp extends StatelessWidget {
               (context) => AuthService(
                 client: http.Client(),
                 storageService: context.read<StorageService>(),
+                prefs: prefs,
               ),
         ),
 

@@ -60,11 +60,9 @@ class CurrencyCard extends StatelessWidget {
           },
         );
       },
-      child: isBackVisible
-          ? _buildBack(context)
-          : _buildFront(context),
       switchInCurve: Curves.easeInOut,
       switchOutCurve: Curves.easeInOut,
+      child: isBackVisible ? _buildBack(context) : _buildFront(context),
     );
   }
 
@@ -153,10 +151,7 @@ class CurrencyCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(height: 10.h),
-          Container(
-            height: 40.h,
-            color: Colors.black.withOpacity(0.7),
-          ),
+          Container(height: 40.h, color: Colors.black.withOpacity(0.7)),
           SizedBox(height: 20.h),
           Row(
             children: [
@@ -184,7 +179,9 @@ class CurrencyCard extends StatelessWidget {
                 color: textColor,
                 tooltip: 'Copy Card Number',
                 onPressed: () {
-                  Clipboard.setData(ClipboardData(text: fullCardNumber ?? cardNumber));
+                  Clipboard.setData(
+                    ClipboardData(text: fullCardNumber ?? cardNumber),
+                  );
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Card number copied!')),
                   );

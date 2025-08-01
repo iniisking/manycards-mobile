@@ -158,10 +158,12 @@ class _PaystackWebViewState extends State<PaystackWebView> {
   }
 
   Future<void> _handleSuccess() async {
+    debugPrint('_handleSuccess called. isVerifying: $isVerifying');
     if (isVerifying) return; // Prevent multiple verifications
 
     setState(() {
       isVerifying = true;
+      debugPrint('isVerifying set to true');
     });
 
     try {

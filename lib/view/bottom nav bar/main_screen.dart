@@ -3,8 +3,8 @@ import 'package:manycards/controller/navigation_controller.dart';
 import 'package:manycards/view/bottom%20nav%20bar/bottom_nav_bar.dart';
 import 'package:manycards/view/cards/card_screen.dart';
 import 'package:manycards/view/home/home_screen.dart';
-import 'package:manycards/view/settings/settings.dart';
-import 'package:manycards/view/transaction%20history/transaction_history.dart';
+import 'package:manycards/view/settings/settings_screen.dart';
+import 'package:manycards/view/transaction%20history/transaction_history_screen.dart';
 import 'package:provider/provider.dart';
 
 class MainScreen extends StatefulWidget {

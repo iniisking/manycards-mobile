@@ -15,12 +15,13 @@ import 'package:shimmer/shimmer.dart';
 import '../../controller/currency_controller.dart';
 import '../../controller/auth_controller.dart';
 import '../../controller/transaction_controller.dart';
-import '../transaction history/transaction_history.dart';
+import '../transaction history/transaction_history_screen.dart';
 import '../actions/top_up_screen.dart';
 import '../actions/transfer_screen.dart';
 import '../../controller/transfer_controller.dart';
 import '../../model/transaction history/res/get_all_transactions_res.dart';
 import '../cards/create_subcard.dart';
+import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,13 +31,19 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  bool showAll = false;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final transactionController = Provider.of<TransactionController>(context, listen: false);
-      final currencyController = Provider.of<CurrencyController>(context, listen: false);
-      
+      final transactionController = Provider.of<TransactionController>(
+        context,
+        listen: false,
+      );
+      final currencyController = Provider.of<CurrencyController>(
+        context,
+        listen: false,
+      );
       transactionController.loadTransactions(
         currency: currencyController.selectedCurrencyCode,
         limit: 5,
@@ -86,11 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
           size: 20.sp,
         );
       case 'transfer':
-        return Icon(
-          Icons.swap_horiz,
-          color: fisrtHeaderTextColor,
-          size: 20.sp,
-        );
+        return Icon(Icons.swap_horiz, color: fisrtHeaderTextColor, size: 20.sp);
       case 'withdrawal':
       case 'withdraw':
         return Icon(
@@ -99,11 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
           size: 20.sp,
         );
       case 'payment':
-        return Icon(
-          Icons.payment,
-          color: fisrtHeaderTextColor,
-          size: 20.sp,
-        );
+        return Icon(Icons.payment, color: fisrtHeaderTextColor, size: 20.sp);
       default:
         return Icon(
           Icons.account_balance_wallet,
@@ -152,22 +151,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _formatAmount(Transaction transaction, String currencyCode) {
+    final format = NumberFormat('#,##0.00');
     if (transaction.type.toLowerCase() == 'transfer') {
-      // For transfers, show the debited amount with source currency
       final amountDebited = transaction.amountDebited ?? 0;
       final sourceCurrency = transaction.sourceCurrency ?? currencyCode;
-      
-      return '-${_getCurrencySymbol(sourceCurrency)}${(amountDebited / 100).toStringAsFixed(2)}';
+      return '-${_getCurrencySymbol(sourceCurrency)}${format.format(amountDebited)}';
     } else {
-      // For funding/other transactions, use the standard amount and currency
       final amount = transaction.amount ?? 0;
       final currency = transaction.currency ?? currencyCode;
-      
-      if (transaction.type.toLowerCase() == 'funding' || 
+      if (transaction.type.toLowerCase() == 'funding' ||
           transaction.type.toLowerCase() == 'top_up') {
-        return '+${_getCurrencySymbol(currency)}${(amount / 100).toStringAsFixed(2)}';
+        return '+${_getCurrencySymbol(currency)}${format.format(amount)}';
       } else {
-        return '-${_getCurrencySymbol(currency)}${(amount / 100).toStringAsFixed(2)}';
+        return '-${_getCurrencySymbol(currency)}${format.format(amount)}';
       }
     }
   }
@@ -207,15 +203,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('HomeScreen build called');
     final controller = Provider.of<CurrencyController>(context);
     final authController = Provider.of<AuthController>(context);
     final transactionController = Provider.of<TransactionController>(context);
+    final filtered =
+        transactionController.transactions.where((transaction) {
+          final currency = controller.selectedCurrencyCode;
+          return transaction.currency == currency ||
+              transaction.sourceCurrency == currency ||
+              transaction.destinationCurrency == currency;
+        }).toList();
+    final recentFiltered = filtered.take(5).toList();
+    final isFilteredEmpty =
+        !transactionController.isLoading && recentFiltered.isEmpty;
+    final recentAll = transactionController.transactions.take(5).toList();
 
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
         child: LiquidPullToRefresh(
-          onRefresh: () => _handleRefresh(context, controller, transactionController),
+          onRefresh:
+              () => _handleRefresh(context, controller, transactionController),
           color: actionButtonColor,
           backgroundColor: fisrtHeaderTextColor,
           height: 70.h,
@@ -415,7 +424,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             constraints: BoxConstraints(
                               maxHeight: MediaQuery.of(context).size.height,
                             ),
-                            routeSettings: const RouteSettings(name: 'create_subcard'),
+                            routeSettings: const RouteSettings(
+                              name: 'create_subcard',
+                            ),
                             builder: (context) => const CreateSubcard(),
                           );
                         },
@@ -471,49 +482,85 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   SizedBox(height: 25.h),
-                  transactionController.isLoading
-                      ? ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: 5,
-                          itemBuilder: (context, index) {
-                            return TransactionRowShimmer();
+                  if (isFilteredEmpty)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: actionButtonColor,
+                            foregroundColor: Colors.white,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              showAll = !showAll;
+                            });
                           },
-                        )
-                      : transactionController.recentTransactions.isEmpty
-                          ? Center(
-                              child: CustomTextWidget(
-                                text: 'No transactions available',
-                                fontSize: 14.sp,
-                                color: secondHeadTextColor,
+                          child: Text(showAll ? 'Show Filtered' : 'Show All'),
+                        ),
+                      ],
+                    ),
+                  if (transactionController.isLoading)
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: 5,
+                      itemBuilder: (context, index) {
+                        return TransactionRowShimmer();
+                      },
+                    )
+                  else if ((showAll ? recentAll : recentFiltered).isEmpty)
+                    Center(
+                      child: CustomTextWidget(
+                        text:
+                            showAll
+                                ? 'No transactions available.'
+                                : 'No transactions available for ${controller.selectedCurrencyCode}',
+                        fontSize: 14.sp,
+                        color: secondHeadTextColor,
+                      ),
+                    )
+                  else
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: (showAll ? recentAll : recentFiltered).length,
+                      itemBuilder: (context, index) {
+                        final transaction =
+                            (showAll ? recentAll : recentFiltered)[index];
+                        return Column(
+                          children: [
+                            TransactionRowWidget(
+                              leadingIcon: _getTransactionIcon(
+                                transaction.type,
                               ),
-                            )
-                          : ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: transactionController.recentTransactions.length,
-                              itemBuilder: (context, index) {
-                                final transaction = transactionController.recentTransactions[index];
-                                return Column(
-                                  children: [
-                                    TransactionRowWidget(
-                                      leadingIcon: _getTransactionIcon(transaction.type),
-                                      title: _getTransactionTitle(transaction.type),
-                                      subtitle: _formatDate(transaction.createdAt),
-                                      description: _getTransactionDescription(transaction),
-                                      amount: controller.isBalanceVisible
-                                          ? _formatAmount(transaction, controller.selectedCurrencyCode)
-                                          : '* * * * * *',
-                                    ),
-                                    if (index < transactionController.recentTransactions.length - 1)
-                                      Padding(
-                                        padding: EdgeInsets.symmetric(vertical: 8.h),
-                                        child: Divider(thickness: 1.h, color: actionButtonColor),
-                                      ),
-                                  ],
-                                );
-                              },
+                              title: _getTransactionTitle(transaction.type),
+                              subtitle: _formatDate(transaction.createdAt),
+                              description: _getTransactionDescription(
+                                transaction,
+                              ),
+                              amount:
+                                  controller.isBalanceVisible
+                                      ? _formatAmount(
+                                        transaction,
+                                        controller.selectedCurrencyCode,
+                                      )
+                                      : '* * * * * *',
                             ),
+                            if (index <
+                                (showAll ? recentAll : recentFiltered).length -
+                                    1)
+                              Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8.h),
+                                child: Divider(
+                                  thickness: 1.h,
+                                  color: actionButtonColor,
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
 
                   // TransactionRowWidget(
                   //   leadingIcon: Icon(

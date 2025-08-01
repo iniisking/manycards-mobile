@@ -63,6 +63,9 @@ class PaymentController extends ChangeNotifier {
     required String reference,
     required String cardId,
   }) async {
+    debugPrint(
+      'verifyTransaction called with reference: $reference, cardId: $cardId',
+    );
     try {
       isLoading = true;
       error = null;

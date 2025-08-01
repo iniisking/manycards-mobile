@@ -31,7 +31,7 @@ class Data {
           .map((e) => Transaction.fromJson(e as Map<String, dynamic>))
           .toList(),
       count: json['count'] ?? 0,
-      nextToken: json['nextToken'],
+      nextToken: json['next_token'],
       filters: Filters.fromJson(json['filters'] ?? {}),
     );
   }
@@ -65,12 +65,12 @@ class Filters {
       type: json['type'],
       status: json['status'],
       currency: json['currency'],
-      sourceCurrency: json['sourceCurrency'],
-      destinationCurrency: json['destinationCurrency'],
-      cardId: json['cardId'],
-      sourceCardId: json['sourceCardId'],
-      destinationCardId: json['destinationCardId'],
-      dateRange: DateRange.fromJson(json['dateRange'] ?? {}),
+      sourceCurrency: json['source_currency'],
+      destinationCurrency: json['destination_currency'],
+      cardId: json['card_id'],
+      sourceCardId: json['source_card_id'],
+      destinationCardId: json['destination_card_id'],
+      dateRange: DateRange.fromJson(json['date_range'] ?? {}),
     );
   }
 }
@@ -93,13 +93,13 @@ class Transaction {
   final String transactionId;
   final String type;
   final String status;
-  final int? amount;
+  final double? amount;
   final String? currency;
   final DateTime createdAt;
   final String? cardId;
   final String? reference;
   final Metadata metadata;
-  final int? amountDebited;
+  final double? amountDebited;
   final double? amountCredited;
   final String? sourceCurrency;
   final String? destinationCurrency;
@@ -115,7 +115,7 @@ class Transaction {
     this.currency,
     required this.createdAt,
     this.cardId,
-    required this.reference,
+    this.reference,
     required this.metadata,
     this.amountDebited,
     this.amountCredited,
@@ -128,26 +128,22 @@ class Transaction {
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
     return Transaction(
-      transactionId: json['transactionId'] ?? '',
+      transactionId: json['transaction_id'] ?? '',
       type: json['type'] ?? '',
       status: json['status'] ?? '',
-      amount: json['amount'],
+      amount: (json['amount'] as num?)?.toDouble(),
       currency: json['currency'],
-      createdAt: DateTime.parse(json['createdAt']),
-      cardId: json['cardId'],
-      reference: json['reference'] ?? '',
+      createdAt: DateTime.parse(json['created_at']),
+      cardId: json['card_id'],
+      reference: json['reference'],
       metadata: Metadata.fromJson(json['metadata'] ?? {}),
-      amountDebited: json['amountDebited'],
-      amountCredited: (json['amountCredited'] is int)
-          ? (json['amountCredited'] as int).toDouble()
-          : (json['amountCredited'] as num?)?.toDouble(),
-      sourceCurrency: json['sourceCurrency'],
-      destinationCurrency: json['destinationCurrency'],
-      exchangeRate: (json['exchangeRate'] is int)
-          ? (json['exchangeRate'] as int).toDouble()
-          : (json['exchangeRate'] as num?)?.toDouble(),
-      sourceCardId: json['sourceCardId'],
-      destinationCardId: json['destinationCardId'],
+      amountDebited: (json['amount_debited'] as num?)?.toDouble(),
+      amountCredited: (json['amount_credited'] as num?)?.toDouble(),
+      sourceCurrency: json['source_currency'],
+      destinationCurrency: json['destination_currency'],
+      exchangeRate: (json['exchange_rate'] as num?)?.toDouble(),
+      sourceCardId: json['source_card_id'],
+      destinationCardId: json['destination_card_id'],
     );
   }
 }
@@ -160,8 +156,8 @@ class Metadata {
 
   factory Metadata.fromJson(Map<String, dynamic> json) {
     return Metadata(
-      userId: json['userId'],
-      cardId: json['cardId'],
+      userId: json['user_id'],
+      cardId: json['card_id'],
     );
   }
 }

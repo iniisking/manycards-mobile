@@ -358,16 +358,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ],
                       ),
                       SizedBox(height: 12.h),
-
-                      // TODO: Implement Google sign-in
-                      // Padding(
-                      //   padding: EdgeInsets.symmetric(horizontal: 10.w),
-                      //   child: GoogleSignInButton(
-                      //     onPressed: () async {
-                      //       await authController.signInWithGoogle(context);
-                      //     },
-                      //   ),
-                      // ),
                     ],
                   ),
                 ),

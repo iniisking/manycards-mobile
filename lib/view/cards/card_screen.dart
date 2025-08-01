@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import 'package:manycards/gen/assets.gen.dart';
-import 'package:manycards/view/cards/sub_card.dart';
+import 'package:manycards/view/cards/sub_card_screen.dart';
 import 'package:manycards/view/constants/text/text.dart';
 import 'package:manycards/view/constants/widgets/button.dart';
 import 'package:manycards/view/constants/widgets/cards.dart';
@@ -15,6 +15,7 @@ import 'package:manycards/controller/card_controller.dart';
 import 'package:manycards/controller/currency_controller.dart';
 import 'package:manycards/controller/transaction_controller.dart';
 import 'package:manycards/model/transaction history/res/get_all_transactions_res.dart';
+import 'package:intl/intl.dart';
 
 class CardScreen extends StatelessWidget {
   const CardScreen({super.key});
@@ -72,11 +73,7 @@ class CardScreen extends StatelessWidget {
           size: 20.sp,
         );
       case 'transfer':
-        return Icon(
-          Icons.swap_horiz,
-          color: fisrtHeaderTextColor,
-          size: 20.sp,
-        );
+        return Icon(Icons.swap_horiz, color: fisrtHeaderTextColor, size: 20.sp);
       case 'withdrawal':
       case 'withdraw':
         return Icon(
@@ -85,11 +82,7 @@ class CardScreen extends StatelessWidget {
           size: 20.sp,
         );
       case 'payment':
-        return Icon(
-          Icons.payment,
-          color: fisrtHeaderTextColor,
-          size: 20.sp,
-        );
+        return Icon(Icons.payment, color: fisrtHeaderTextColor, size: 20.sp);
       default:
         return Icon(
           Icons.account_balance_wallet,
@@ -138,45 +131,45 @@ class CardScreen extends StatelessWidget {
   }
 
   String _formatAmount(Transaction transaction, String currencyCode) {
+    final format = NumberFormat('#,##0.00');
     if (transaction.type.toLowerCase() == 'transfer') {
-      // For transfers, show the debited amount with source currency
       final amountDebited = transaction.amountDebited ?? 0;
       final sourceCurrency = transaction.sourceCurrency ?? currencyCode;
-      
-      return '-${_getCurrencySymbol(sourceCurrency)}${(amountDebited / 100).toStringAsFixed(2)}';
+      return '-${_getCurrencySymbol(sourceCurrency)}${format.format(amountDebited)}';
     } else {
-      // For funding/other transactions, use the standard amount and currency
       final amount = transaction.amount ?? 0;
       final currency = transaction.currency ?? currencyCode;
-      
-      if (transaction.type.toLowerCase() == 'funding' || 
+      if (transaction.type.toLowerCase() == 'funding' ||
           transaction.type.toLowerCase() == 'top_up') {
-        return '+${_getCurrencySymbol(currency)}${(amount / 100).toStringAsFixed(2)}';
+        return '+${_getCurrencySymbol(currency)}${format.format(amount)}';
       } else {
-        return '-${_getCurrencySymbol(currency)}${(amount / 100).toStringAsFixed(2)}';
+        return '-${_getCurrencySymbol(currency)}${format.format(amount)}';
       }
     }
-  }
-
-  List<Transaction> _getFilteredTransactions(
-    TransactionController transactionController,
-    String currency,
-  ) {
-    return transactionController.transactions.where((transaction) {
-      // Filter by currency - check if transaction involves this currency
-      return transaction.currency == currency ||
-             transaction.sourceCurrency == currency ||
-             transaction.destinationCurrency == currency;
-    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     return Consumer3<CardController, CurrencyController, TransactionController>(
-      builder: (context, cardController, currencyController, transactionController, child) {
+      builder: (
+        context,
+        cardController,
+        currencyController,
+        transactionController,
+        child,
+      ) {
         final selectedCard = cardController.selectedCard;
         final currentCurrency = cardController.currencyCode;
-        final filteredTransactions = _getFilteredTransactions(transactionController, currentCurrency);
+        final filteredTransactions =
+            transactionController.transactions.where((transaction) {
+              return transaction.currency == currentCurrency ||
+                  transaction.sourceCurrency == currentCurrency ||
+                  transaction.destinationCurrency == currentCurrency;
+            }).toList();
+        final isFilteredEmpty =
+            filteredTransactions.isEmpty &&
+            !(cardController.isLoading || currencyController.isLoading);
+        final showAll = ValueNotifier<bool>(false);
 
         return Scaffold(
           backgroundColor: backgroundColor,
@@ -249,7 +242,8 @@ class CardScreen extends StatelessWidget {
                           currencySymbol: cardController.currencySymbol,
                           cardNumber: selectedCard.maskedNumber,
                           expiryDate: selectedCard.expiry,
-                          cardholderName: '****', // You can update this if you have the name
+                          cardholderName:
+                              '****', // You can update this if you have the name
                           isBackVisible: cardController.isCardDetailsVisible,
                           cvv: selectedCard.cvv,
                           fullCardNumber: selectedCard.number,
@@ -274,13 +268,21 @@ class CardScreen extends StatelessWidget {
                             },
                             icon: Padding(
                               padding: EdgeInsets.all(5.sp),
-                              child: cardController.isCardDetailsVisible
-                                  ? Icon(Icons.visibility_off, color: Color(0xFFC4C4C4), size: 24)
-                                  : Assets.images.view.image(
-                                      color: const Color(0xFFC4C4C4),
-                                    ),
+                              child:
+                                  cardController.isCardDetailsVisible
+                                      ? Icon(
+                                        Icons.visibility_off,
+                                        color: Color(0xFFC4C4C4),
+                                        size: 24,
+                                      )
+                                      : Assets.images.view.image(
+                                        color: const Color(0xFFC4C4C4),
+                                      ),
                             ),
-                            label: cardController.isCardDetailsVisible ? 'Hide Details' : 'View Details',
+                            label:
+                                cardController.isCardDetailsVisible
+                                    ? 'Hide Details'
+                                    : 'View Details',
                           ),
                           QuickActionButton(
                             onTap: () async {
@@ -330,6 +332,28 @@ class CardScreen extends StatelessWidget {
                         ],
                       ),
                       SizedBox(height: 20.h),
+                      if (isFilteredEmpty)
+                        ValueListenableBuilder<bool>(
+                          valueListenable: showAll,
+                          builder:
+                              (context, value, _) => Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: actionButtonColor,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    onPressed: () {
+                                      showAll.value = !showAll.value;
+                                    },
+                                    child: Text(
+                                      value ? 'Show Filtered' : 'Show All',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                        ),
                       if (cardController.isLoading ||
                           currencyController.isLoading)
                         ListView.builder(
@@ -340,38 +364,68 @@ class CardScreen extends StatelessWidget {
                             return TransactionRowShimmer();
                           },
                         )
-                      else if (filteredTransactions.isEmpty)
-                        Center(
-                          child: CustomTextWidget(
-                            text: 'No transactions available for $currentCurrency',
-                            fontSize: 14.sp,
-                            color: secondHeadTextColor,
-                          ),
-                        )
                       else
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: filteredTransactions.length,
-                          itemBuilder: (context, index) {
-                            final transaction = filteredTransactions[index];
-                            return Column(
-                              children: [
-                                TransactionRowWidget(
-                                  leadingIcon: _getTransactionIcon(transaction.type),
-                                  title: _getTransactionTitle(transaction.type),
-                                  subtitle: _formatDate(transaction.createdAt),
-                                  description: _getTransactionDescription(transaction),
-                                  amount: currencyController.isBalanceVisible
-                                      ? _formatAmount(transaction, currentCurrency)
-                                      : '* * * * * *',
+                        ValueListenableBuilder<bool>(
+                          valueListenable: showAll,
+                          builder: (context, value, _) {
+                            final list =
+                                value
+                                    ? transactionController.transactions
+                                    : filteredTransactions;
+                            if (list.isEmpty) {
+                              return Center(
+                                child: CustomTextWidget(
+                                  text:
+                                      value
+                                          ? 'No transactions available.'
+                                          : 'No transactions available for $currentCurrency',
+                                  fontSize: 14.sp,
+                                  color: secondHeadTextColor,
                                 ),
-                                if (index < filteredTransactions.length - 1)
-                                  Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.h),
-                                    child: Divider(thickness: 1.h, color: actionButtonColor),
-                                  ),
-                              ],
+                              );
+                            }
+                            return ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: list.length,
+                              itemBuilder: (context, index) {
+                                final transaction = list[index];
+                                return Column(
+                                  children: [
+                                    TransactionRowWidget(
+                                      leadingIcon: _getTransactionIcon(
+                                        transaction.type,
+                                      ),
+                                      title: _getTransactionTitle(
+                                        transaction.type,
+                                      ),
+                                      subtitle: _formatDate(
+                                        transaction.createdAt,
+                                      ),
+                                      description: _getTransactionDescription(
+                                        transaction,
+                                      ),
+                                      amount:
+                                          currencyController.isBalanceVisible
+                                              ? _formatAmount(
+                                                transaction,
+                                                currentCurrency,
+                                              )
+                                              : '* * * * * *',
+                                    ),
+                                    if (index < list.length - 1)
+                                      Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 8.h,
+                                        ),
+                                        child: Divider(
+                                          thickness: 1.h,
+                                          color: actionButtonColor,
+                                        ),
+                                      ),
+                                  ],
+                                );
+                              },
                             );
                           },
                         ),

@@ -7,6 +7,7 @@ import 'package:manycards/view/constants/widgets/textfield.dart';
 import 'package:provider/provider.dart';
 import 'package:manycards/controller/subcard_controller.dart';
 import 'package:manycards/controller/card_controller.dart';
+import 'package:intl/intl.dart';
 
 class CreateSubcard extends StatefulWidget {
   const CreateSubcard({super.key});
@@ -52,11 +53,10 @@ class _CreateSubcardState extends State<CreateSubcard> {
         listen: false,
       );
       final maxBalance = cardController.balance;
-      if (maxBalance > 0) {
         setState(() {
-          _spendingLimit = maxBalance > 1000 ? 1000.0 : maxBalance;
+        // Clamp the initial spending limit to the available balance
+        _spendingLimit = _spendingLimit.clamp(0.0, maxBalance > 0 ? maxBalance : 10000);
         });
-      }
     });
   }
 
@@ -360,7 +360,7 @@ class _CreateSubcardState extends State<CreateSubcard> {
                     children: [
                       CustomTextWidget(
                         text:
-                            '${controller.selectedCurrencySymbol}${_spendingLimit.toStringAsFixed(0)}',
+                            '${controller.selectedCurrencySymbol}${NumberFormat('#,##0.00').format(_spendingLimit)}',
                         fontSize: 18.sp,
                         color: fisrtHeaderTextColor,
                         fontWeight: FontWeight.bold,
@@ -389,7 +389,7 @@ class _CreateSubcardState extends State<CreateSubcard> {
                       ),
                     ),
                     child: Slider(
-                      value: _spendingLimit,
+                      value: _spendingLimit.clamp(0.0, cardController.balance > 0 ? cardController.balance : 10000),
                       min: 0,
                       max:
                           cardController.balance > 0
@@ -414,7 +414,7 @@ class _CreateSubcardState extends State<CreateSubcard> {
                       ),
                       CustomTextWidget(
                         text:
-                            '${cardController.currencySymbol}${cardController.balance.toStringAsFixed(2)}',
+                            '${cardController.currencySymbol}${NumberFormat('#,##0.00').format(cardController.balance)}',
                         fontSize: 12.sp,
                         color: fisrtHeaderTextColor,
                         fontWeight: FontWeight.w500,

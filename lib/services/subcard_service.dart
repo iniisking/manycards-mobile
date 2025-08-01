@@ -1,7 +1,9 @@
+import 'package:flutter/material.dart';
 import 'package:manycards/config/api_endpoints.dart';
 import 'package:manycards/model/subcards/req/create_subcard_req.dart';
 import 'package:manycards/model/subcards/res/create_subcard_res.dart';
 import 'package:manycards/model/subcards/res/get_all_subcard_res.dart';
+import 'package:manycards/model/subcards/res/delete_subcard_res.dart';
 import 'package:manycards/services/base_api_service.dart';
 
 class SubcardService extends BaseApiService {
@@ -9,17 +11,19 @@ class SubcardService extends BaseApiService {
 
   Future<CreateSubcardRes> createSubcard(CreateSubcardReq request) async {
     try {
-      print('Creating subcard with request: ${createSubcardReqToJson(request)}');
+      debugPrint(
+        'Creating subcard with request: ${createSubcardReqToJson(request)}',
+      );
       final response = await post(
         ApiEndpoints.createSubcard,
         body: createSubcardReqToJson(request),
         requiresAuth: true,
       );
 
-      print('Create subcard response: $response');
+      debugPrint('Create subcard response: $response');
       return createSubcardResFromJson(response);
     } catch (e) {
-      print('Error creating subcard: $e');
+      debugPrint('Error creating subcard: $e');
       return CreateSubcardRes(
         error: true,
         message: e.toString(),
@@ -43,17 +47,18 @@ class SubcardService extends BaseApiService {
     }
   }
 
-  Future<GetAllSubcardRes> getAllSubcards() async {
+  Future<GetAllSubcardRes> getAllSubcards(String mainCardId) async {
     try {
-      print('Fetching all subcards...');
-      final response = await get(
+      debugPrint('Fetching all subcards for mainCardId: $mainCardId');
+      final response = await post(
         ApiEndpoints.getAllSubcards,
+        body: {'main_card_id': mainCardId},
         requiresAuth: true,
       );
-      print('Get all subcards response: $response');
+      debugPrint('Get all subcards response: $response');
       return getAllSubcardResFromJson(response);
     } catch (e) {
-      print('Error fetching subcards: $e');
+      debugPrint('Error fetching subcards: $e');
       return GetAllSubcardRes(
         error: true,
         success: false,
@@ -62,4 +67,24 @@ class SubcardService extends BaseApiService {
       );
     }
   }
-} 
+
+  Future<DeleteSubcardRes> deleteSubcard(String subcardId) async {
+    try {
+      debugPrint('Deleting subcard with id: $subcardId');
+      final response = await post(
+        ApiEndpoints.deleteSubcard,
+        body: {'sub_card_id': subcardId},
+        requiresAuth: true,
+      );
+      debugPrint('Delete subcard response: $response');
+      return DeleteSubcardRes.fromJson(response);
+    } catch (e) {
+      debugPrint('Error deleting subcard: $e');
+      return DeleteSubcardRes(
+        success: false,
+        message: e.toString(),
+        cardId: subcardId,
+      );
+    }
+  }
+}
