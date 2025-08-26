@@ -35,23 +35,6 @@ ManyCards is a production-ready Flutter app that brings a seamless digital walle
 - **Auth & Security**: JWT, secure storage, optional biometrics
 - **Responsive UI**: Modern design with dark theme support
 
-## Screenshots
-
-<!-- Replace with your images. Suggested layout: 3‑across screenshots -->
-<p align="center">
-  <img src="docs/screenshots/home.png" alt="Home" width="28%"/>
-  <img src="docs/screenshots/cards.png" alt="Cards" width="28%"/>
-  <img src="docs/screenshots/transactions.png" alt="Transactions" width="28%"/>
-</p>
-
-## Demo GIFs
-
-<!-- Short flows: onboarding, create card, fund via Paystack, transfer -->
-<p align="center">
-  <img src="docs/gifs/onboarding.gif" alt="Onboarding" width="45%"/>
-  <img src="docs/gifs/fund.gif" alt="Funding via Paystack" width="45%"/>
-</p>
-
 ## Architecture
 
 - **State Management**: Provider + feature-specific controllers (`AuthController`, `CardController`, `CurrencyController`, `PaymentController`, `TransactionController`, `SubcardController`)
