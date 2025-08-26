@@ -6,13 +6,13 @@ Modern multi-currency wallet for NGN, USD, and GBP. Create virtual cards, manage
 
 ## Demo
 
-![Voice to note flow](docs/intro.gif)
+![Auth flow](docs/intro.gif)
 
-![Voice to note flow](docs/transfer.gif)
+![User flow](docs/transfer.gif)
 
-![Voice to note flow](docs/card.gif)
+![Card flow](docs/card.gif)
 
-![Voice to note flow](docs/subcard.gif)
+![subcard flow](docs/subcard.gif)
 
 ## Overview
 
