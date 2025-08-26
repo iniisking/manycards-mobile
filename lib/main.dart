@@ -1,38 +1,199 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
-import 'package:manycards/controller/auth_controller.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:manycards/controller/currency_controller.dart';
+import 'package:manycards/controller/auth_controller.dart';
+import 'package:manycards/controller/card_controller.dart';
+import 'package:manycards/controller/navigation_controller.dart';
+import 'package:manycards/controller/payment_controller.dart';
+import 'package:manycards/services/auth_service.dart';
+import 'package:manycards/services/card_service.dart';
+import 'package:manycards/services/storage_service.dart';
+import 'package:manycards/services/payment_service.dart';
+import 'package:manycards/services/currency_service.dart';
+import 'package:manycards/services/transfer_service.dart';
+import 'package:manycards/services/subcard_service.dart';
+import 'package:manycards/services/transaction_service.dart';
+import 'package:manycards/controller/subcard_controller.dart';
+import 'package:manycards/controller/transaction_controller.dart';
 import 'package:manycards/view/authentication/auth_wrapper.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
 
 void main() async {
+  // Set the status bar style
+  SystemChrome.setSystemUIOverlayStyle(
+    SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent, // Make status bar transparent
+      statusBarIconBrightness:
+          Brightness.light, // Use light icons (for dark backgrounds)
+      statusBarBrightness: Brightness.light, // For iOS
+    ),
+  );
+
   WidgetsFlutterBinding.ensureInitialized();
+  // Load environment variables
+  await dotenv.load(fileName: ".env");
 
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    debugPrint('Firebase initialized successfully');
-  } catch (e) {
-    debugPrint('Error initializing Firebase: $e');
-  }
+  // Initialize SharedPreferences
+  final prefs = await SharedPreferences.getInstance();
 
-  runApp(const MyApp());
+  runApp(MyApp(prefs: prefs));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final SharedPreferences prefs;
+
+  const MyApp({super.key, required this.prefs});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthController()),
-        ChangeNotifierProvider(create: (_) => CurrencyController()),
+        //storage provider
+        Provider<StorageService>(create: (_) => StorageService()),
+        //auth and provider
+        Provider<AuthService>(
+          create:
+              (context) => AuthService(
+                client: http.Client(),
+                storageService: context.read<StorageService>(),
+                prefs: prefs,
+              ),
+        ),
+
+        //currency service provider
+        Provider<CurrencyService>(
+          create:
+              (context) => CurrencyService(
+                client: http.Client(),
+                authService: context.read<AuthService>(),
+              ),
+        ),
+
+        //card provider
+        Provider<CardService>(
+          create:
+              (context) => CardService(
+                client: http.Client(),
+                authService: context.read<AuthService>(),
+              ),
+        ),
+
+        //transfer service provider
+        Provider<TransferService>(
+          create:
+              (context) => TransferService(
+                currencyService: context.read<CurrencyService>(),
+                cardService: context.read<CardService>(),
+              ),
+        ),
+
+        //subcard service provider
+        Provider<SubcardService>(
+          create:
+              (context) => SubcardService(
+                client: http.Client(),
+                authService: context.read<AuthService>(),
+              ),
+        ),
+
+        //payment provider
+        Provider<PaymentService>(
+          create:
+              (context) => PaymentService(
+                client: http.Client(),
+                authService: context.read<AuthService>(),
+              ),
+        ),
+
+        //transaction service provider
+        Provider<TransactionService>(
+          create:
+              (context) => TransactionService(
+                client: http.Client(),
+                authService: context.read<AuthService>(),
+              ),
+        ),
+
+        //auth controller
+        ChangeNotifierProxyProvider2<AuthService, CardService, AuthController>(
+          create:
+              (context) => AuthController(
+                context.read<AuthService>(),
+                context.read<CardService>(),
+                prefs: prefs,
+              ),
+          update:
+              (context, authService, cardService, previous) =>
+                  AuthController(authService, cardService, prefs: prefs),
+        ),
+
+        //payment controller
+        ChangeNotifierProvider<PaymentController>(
+          create:
+              (context) => PaymentController(
+                paymentService: context.read<PaymentService>(),
+                authService: context.read<AuthService>(),
+              ),
+        ),
+
+        ChangeNotifierProvider(
+          create:
+              (context) => CurrencyController(
+                context.read<AuthController>(),
+                http.Client(),
+              ),
+        ),
+        ChangeNotifierProxyProvider2<
+          CurrencyController,
+          CardService,
+          CardController
+        >(
+          create:
+              (context) => CardController(
+                context.read<CurrencyController>(),
+                context.read<CardService>(),
+              ),
+          update:
+              (_, currencyController, cardService, cardController) =>
+                  cardController ??
+                  CardController(currencyController, cardService),
+        ),
+        
+        //subcard controller
+        ChangeNotifierProxyProvider2<
+          SubcardService,
+          CardController,
+          SubcardController
+        >(
+          create:
+              (context) => SubcardController(
+                context.read<SubcardService>(),
+                context.read<CardController>(),
+              ),
+          update:
+              (_, subcardService, cardController, subcardController) =>
+                  subcardController ??
+                  SubcardController(subcardService, cardController),
+        ),
+
+        //transaction controller
+        ChangeNotifierProvider<TransactionController>(
+          create:
+              (context) => TransactionController(
+                context.read<TransactionService>(),
+              ),
+        ),
+        
+        // Add NavigationController
+        ChangeNotifierProvider(create: (_) => NavigationController()),
       ],
       child: ScreenUtilInit(
+        ensureScreenSize: true,
+        useInheritedMediaQuery: true,
         designSize: const Size(375, 812),
         minTextAdapt: true,
         splitScreenMode: true,

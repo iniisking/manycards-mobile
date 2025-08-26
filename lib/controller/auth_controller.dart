@@ -1,392 +1,550 @@
-// lib/providers/auth_provider.dart
-// ignore_for_file: avoid_print
-
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:manycards/services/auth_service.dart';
-import 'package:manycards/services/firestore_service.dart';
 import 'package:flutter/material.dart';
+import 'package:manycards/model/auth/req/confirm_sign_up_req.dart';
+import 'package:manycards/model/auth/req/sign_up_req.dart';
+import 'package:manycards/model/auth/req/login_req.dart';
+import 'package:manycards/model/auth/res/login_res.dart';
+import 'package:manycards/services/auth_service.dart';
+import 'package:manycards/services/card_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class AuthController extends ChangeNotifier {
-  final AuthService _authService = AuthService();
-  final FirestoreService _firestoreService = FirestoreService();
-
-  User? _user;
+  final AuthService _authService;
+  final CardService _cardService;
+  final SharedPreferences _prefs;
   bool _isLoading = false;
-  String _error = '';
-  String _lastEmail = '';
+  bool _isLoggedIn = false;
   bool _isEmailVerified = false;
-  String _lastEmailSent = '';
-  String _firstName = '';
+  String? _error;
+  LoginRes? _user;
+  String? _lastEmail;
+  String? _firstName;
+  String? _lastName;
+  String? _lastPassword;
 
-  AuthController() {
-    debugPrint('AuthController initialized');
-    _initializeAuthState();
-  }
+  static const String _firstNameKey = 'user_first_name';
+  static const String _lastNameKey = 'user_last_name';
 
-  Future<void> _initializeAuthState() async {
-    debugPrint('Initializing auth state');
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      // Get the current user
-      _user = _authService.currentUser;
-      debugPrint('Current user: ${_user?.email}');
-
-      if (_user != null) {
-        _isEmailVerified = _user!.emailVerified;
-        debugPrint('Email verified: $_isEmailVerified');
-
-        // Get user profile from Firestore
-        final userProfile = await _firestoreService.getUserProfile(_user!.uid);
-        if (userProfile != null) {
-          _firstName = userProfile['firstName'] ?? '';
-          debugPrint('Retrieved first name: $_firstName');
-        } else {
-          debugPrint('No user profile found, using display name');
-          _firstName = _user!.displayName?.split(' ').first ?? '';
-        }
-      }
-
-      // Listen to auth state changes
-      _authService.authStateChanges.listen((User? user) async {
-        debugPrint('Auth state changed. New user: ${user?.email}');
-        _user = user;
-        _isEmailVerified = user?.emailVerified ?? false;
-
-        if (user != null) {
-          // Get user profile from Firestore when auth state changes
-          final userProfile = await _firestoreService.getUserProfile(user.uid);
-          if (userProfile != null) {
-            _firstName = userProfile['firstName'] ?? '';
-            debugPrint(
-              'Updated first name from auth state change: $_firstName',
-            );
-          } else {
-            debugPrint(
-              'No user profile found in auth state change, using display name',
-            );
-            _firstName = user.displayName?.split(' ').first ?? '';
-          }
-        } else {
-          _firstName = '';
-          debugPrint('User signed out, cleared first name');
-        }
-
-        notifyListeners();
-      });
-    } catch (e) {
-      debugPrint('Error initializing auth state: $e');
-      _error = 'Error initializing auth state';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+  AuthController(
+    this._authService,
+    this._cardService, {
+    SharedPreferences? prefs,
+  }) : _prefs =
+           prefs ?? (throw Exception('SharedPreferences must be provided')) {
+    // Initialize auth state asynchronously
+    Future.microtask(() => initializeAuthState());
   }
 
   // Getters
-  User? get user => _user;
-  bool get isLoggedIn => _user != null;
+  AuthService get authService => _authService;
   bool get isLoading => _isLoading;
-  String get error => _error;
-  String get lastEmail => _lastEmail;
+  bool get isLoggedIn => _isLoggedIn;
   bool get isEmailVerified => _isEmailVerified;
-  String get lastEmailSent => _lastEmailSent;
-  String get firstName => _firstName;
+  String? get error => _error;
+  LoginRes? get user => _user;
+  String? get lastEmail => _lastEmail;
+  String get firstName => _firstName ?? 'User';
+  String get lastName => _lastName ?? '';
 
-  // Sign in
-  Future<bool> signIn(String email, String password) async {
-    _isLoading = true;
-    _error = '';
-    notifyListeners();
+  // Add a public getter for the auth token
+  Future<String?> get authToken async => await _authService.getAuthToken();
 
+  // Decode JWT token
+  Map<String, dynamic>? _decodeToken(String token) {
     try {
-      await _authService.signIn(email, password);
-      _isLoading = false;
-      notifyListeners();
-      return true;
+      debugPrint('Attempting to decode token...');
+      final parts = token.split('.');
+      if (parts.length != 3) {
+        debugPrint(
+          'Invalid token format: expected 3 parts, got ${parts.length}',
+        );
+        return null;
+      }
+
+      // Decode the payload (second part)
+      final payload = parts[1];
+      final normalized = base64Url.normalize(payload);
+      final decoded = utf8.decode(base64Url.decode(normalized));
+      final claims = json.decode(decoded) as Map<String, dynamic>;
+
+      debugPrint('Token claims: $claims');
+      debugPrint('Given name from token: ${claims['given_name']}');
+
+      return claims;
     } catch (e) {
-      _isLoading = false;
-      _error = _getUserFriendlyError(e);
-      notifyListeners();
-      return false;
+      debugPrint('Error decoding token: $e');
+      return null;
     }
   }
 
-  // Sign up with full profile
-  Future<bool> signUp({
-    required String firstName,
-    required String lastName,
-    required String email,
-    required String password,
-  }) async {
-    debugPrint('Starting signUp process...');
-    _isLoading = true;
-    _error = '';
-    _lastEmail = email;
-    _firstName = firstName;
-    notifyListeners();
-
+  // Initialize auth state
+  Future<void> initializeAuthState() async {
+    _setLoading(true);
     try {
-      debugPrint('Checking if email is already in use...');
-      // Check if user already exists
-      final methods = await _authService.getSignInMethods(email);
-      if (methods.isNotEmpty) {
-        _error = 'An account with this email already exists';
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
+      // Initialize the auth service first
+      await _authService.initialize();
 
-      debugPrint('Creating new user account...');
-      // Create the user account
-      final userCredential = await _authService.signUp(email, password);
-
-      if (userCredential?.user != null) {
-        try {
-          debugPrint('Creating user profile in Firestore...');
-          // Create user profile in Firestore
-          await _firestoreService.createUserProfile(
-            userCredential!.user!.uid,
-            firstName,
-            lastName,
-            email,
-          );
-
-          debugPrint('Updating display name...');
-          // Update display name
-          await userCredential.user!.updateDisplayName('$firstName $lastName');
-
-          debugPrint('Sending verification email...');
-          // Send verification email
-          await userCredential.user!.sendEmailVerification();
-          debugPrint('Verification email sent successfully');
-
-          // Update the current user and state
-          _user = userCredential.user;
-          _isEmailVerified = false;
-          _lastEmail = email;
-          _firstName = firstName;
-
-          // Ensure state is updated
-          _isLoading = false;
-          notifyListeners();
-
-          debugPrint('Sign-up completed successfully, returning true');
-          return true;
-        } catch (profileError) {
-          debugPrint('Error during profile setup: $profileError');
-          // If profile creation fails, delete the user account
-          if (userCredential?.user != null) {
-            await userCredential!.user!.delete();
+      _isLoggedIn = await _authService.isLoggedIn();
+      if (_isLoggedIn) {
+        final token = await _authService.getAuthToken();
+        if (token != null) {
+          final claims = _decodeToken(token);
+          if (claims != null) {
+            _firstName = claims['given_name'] as String?;
+            _lastName = claims['family_name'] as String?;
+            if (_firstName != null) {
+              await _prefs.setString(_firstNameKey, _firstName!);
+            }
+            if (_lastName != null) {
+              await _prefs.setString(_lastNameKey, _lastName!);
+            }
+            debugPrint('Loaded first name from token: $_firstName');
+            debugPrint('Loaded last name from token: $_lastName');
           }
-          _error = 'Account creation failed. Please try again.';
-          _isLoading = false;
-          notifyListeners();
-          return false;
         }
+        _isEmailVerified = true;
+      }
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Sign Up with full name
+  Future<bool> signUp(String fullName, String email, String password) async {
+    _setLoading(true);
+    _clearError();
+    try {
+      // Store password temporarily for login after confirmation
+      _lastPassword = password;
+
+      // Split full name into first and last name
+      final nameParts = fullName.trim().split(' ');
+      if (nameParts.length != 2) {
+        _setError('Please enter your full name (first and last name)');
+        return false;
+      }
+
+      final request = SignUpReq(
+        email: email,
+        firstName: nameParts[0],
+        lastName: nameParts[1],
+        password: password,
+      );
+
+      final response = await _authService.signUp(request);
+      if (response.success) {
+        _lastEmail = email;
+        _firstName = nameParts[0];
+        _lastName = nameParts[1];
+        // Store first name in SharedPreferences
+        await _prefs.setString(_firstNameKey, _firstName!);
+        await _prefs.setString(_lastNameKey, _lastName!);
+        debugPrint('Stored first name in SharedPreferences: $_firstName');
+        debugPrint('Stored last name in SharedPreferences: $_lastName');
+        return true;
       } else {
-        debugPrint('Failed to create user account');
-        _error = 'Failed to create user account';
-        _isLoading = false;
-        notifyListeners();
+        _setError(response.message);
         return false;
       }
     } catch (e) {
-      debugPrint('Registration error: $e');
-      _error = _getUserFriendlyError(e);
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
+      // Extract just the error message, not the full exception
+      String errorMessage = 'An error occurred. Please try again.';
+      String errorString = e.toString();
 
-  // Sign out
-  Future<void> signOut() async {
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      await _authService.signOut();
-      _user = null;
-      _firstName = '';
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Sign out error: $e');
-      _error = 'Error signing out';
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  // Clear errors
-  void clearError() {
-    _error = '';
-    notifyListeners();
-  }
-
-  // Get user-friendly error messages
-  String _getUserFriendlyError(dynamic error) {
-    if (error is FirebaseAuthException) {
-      switch (error.code) {
-        case 'email-already-in-use':
-          return 'This email is already registered';
-        case 'weak-password':
-          return 'Password is too weak';
-        case 'invalid-email':
-          return 'Invalid email address';
-        case 'user-not-found':
-          return 'No account found with this email';
-        case 'wrong-password':
-          return 'Incorrect password';
-        case 'user-disabled':
-          return 'This account has been disabled';
-        default:
-          return 'An error occurred: ${error.message}';
-      }
-    }
-    return 'An unexpected error occurred';
-  }
-
-  Future<void> checkEmailVerification() async {
-    try {
-      // Reload the user to get the latest verification status
-      await _user?.reload();
-      _user = _authService.currentUser;
-      _isEmailVerified = _user?.emailVerified ?? false;
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error checking email verification: $e');
-      _error = 'Error checking email verification';
-      notifyListeners();
-    }
-  }
-
-  Future<void> resendVerificationEmail() async {
-    try {
-      await _user?.sendEmailVerification();
-      _lastEmailSent = _user?.email ?? '';
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error resending verification email: $e');
-      _error = 'Failed to resend verification email';
-      notifyListeners();
-    }
-  }
-
-  // Reset password
-  Future<bool> resetPassword(String email) async {
-    _isLoading = true;
-    _error = '';
-    notifyListeners();
-
-    try {
-      await _authService.sendPasswordResetEmail(email);
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _isLoading = false;
-      _error = _getUserFriendlyError(e);
-      notifyListeners();
-      return false;
-    }
-  }
-
-  // Update password
-  Future<bool> updatePassword(String newPassword) async {
-    _isLoading = true;
-    _error = '';
-    notifyListeners();
-
-    try {
-      await _user?.updatePassword(newPassword);
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _isLoading = false;
-      _error = _getUserFriendlyError(e);
-      notifyListeners();
-      return false;
-    }
-  }
-
-  // Google sign-in
-  Future<void> signInWithGoogle(BuildContext context) async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-
-      final userCredential = await _authService.signInWithGoogle();
-
-      if (userCredential == null) {
-        // User canceled the sign-in
-        _isLoading = false;
-        notifyListeners();
-        return;
+      if (errorString.startsWith('Exception: ')) {
+        errorMessage = errorString.substring(11); // Remove "Exception: " prefix
+      } else {
+        errorMessage = errorString;
       }
 
-      if (userCredential.user != null) {
-        if (!userCredential.user!.emailVerified) {
-          await userCredential.user!.sendEmailVerification();
-          if (context.mounted) {
-            Navigator.pushReplacementNamed(context, '/verify-email');
+      // Remove quotes if present
+      if (errorMessage.startsWith('"') && errorMessage.endsWith('"')) {
+        errorMessage = errorMessage.substring(1, errorMessage.length - 1);
+      }
+
+      _setError(errorMessage);
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Sign In
+  Future<bool> signIn(String email, String password) async {
+    _setLoading(true);
+    _clearError();
+    try {
+      final request = LoginReq(email: email, password: password);
+      final response = await _authService.login(request);
+      if (response.success) {
+        _user = response;
+        _isLoggedIn = true;
+        _isEmailVerified = true;
+
+        // Extract first name from token
+        final token = response.token;
+        debugPrint('Login successful, token: $token');
+
+        if (token?.isNotEmpty ?? false) {
+          final claims = _decodeToken(token!);
+          if (claims != null) {
+            _firstName = claims['given_name'] as String?;
+            _lastName = claims['family_name'] as String?;
+            if (_firstName != null) {
+              await _prefs.setString(_firstNameKey, _firstName!);
+            }
+            if (_lastName != null) {
+              await _prefs.setString(_lastNameKey, _lastName!);
+            }
+            debugPrint('Extracted first name from token: $_firstName');
+            debugPrint('Extracted last name from token: $_lastName');
+          } else {
+            debugPrint('Failed to decode token or extract given_name');
           }
         } else {
-          if (context.mounted) {
-            Navigator.pushReplacementNamed(context, '/home');
-          }
+          debugPrint('Token is empty');
         }
-      }
-    } on FirebaseAuthException catch (e) {
-      String errorMessage;
-      switch (e.code) {
-        case 'account-exists-with-different-credential':
-          errorMessage =
-              'An account already exists with the same email address but different sign-in credentials.';
-          break;
-        case 'invalid-credential':
-          errorMessage = 'The credential provided is invalid or has expired.';
-          break;
-        case 'operation-not-allowed':
-          errorMessage =
-              'Google sign-in is not enabled. Please contact support.';
-          break;
-        case 'user-disabled':
-          errorMessage = 'This user account has been disabled.';
-          break;
-        case 'user-not-found':
-          errorMessage = 'No user found with this email.';
-          break;
-        case 'wrong-password':
-          errorMessage = 'Wrong password provided.';
-          break;
-        case 'network-request-failed':
-          errorMessage =
-              'Network error occurred. Please check your internet connection.';
-          break;
-        default:
-          errorMessage = 'An unexpected error occurred. Please try again.';
-      }
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(errorMessage)));
+
+        notifyListeners();
+        return true;
+      } else {
+        _setError(response.message);
+        return false;
       }
     } catch (e) {
-      debugPrint('Unexpected error during Google sign-in: $e');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('An unexpected error occurred. Please try again.'),
-          ),
-        );
+      // Extract just the error message, not the full exception
+      String errorMessage = 'An error occurred. Please try again.';
+      String errorString = e.toString();
+
+      if (errorString.startsWith('Exception: ')) {
+        errorMessage = errorString.substring(11); // Remove "Exception: " prefix
+      } else {
+        errorMessage = errorString;
       }
+
+      // Remove quotes if present
+      if (errorMessage.startsWith('"') && errorMessage.endsWith('"')) {
+        errorMessage = errorMessage.substring(1, errorMessage.length - 1);
+      }
+
+      _setError(errorMessage);
+      return false;
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      _setLoading(false);
     }
+  }
+
+  // Confirm Sign Up
+  Future<bool> confirmSignUp(String email, String code) async {
+    _setLoading(true);
+    _clearError();
+    try {
+      debugPrint('Starting confirmation process for email: $email');
+      debugPrint('Verification code: $code');
+
+      final request = ConfirmSignUpReq(email: email, code: code);
+      debugPrint('Sending confirmation request...');
+
+      final response = await _authService.confirmSignUp(request);
+      debugPrint(
+        'Confirmation response received: ${response.success} - ${response.message}',
+      );
+
+      if (response.success) {
+        _isEmailVerified = true;
+        debugPrint('Email verified successfully');
+
+        // Log in the user after successful confirmation
+        debugPrint('Attempting to log in user after confirmation...');
+        final loginRequest = LoginReq(
+          email: email,
+          password: _lastPassword ?? '',
+        );
+        final loginResponse = await _authService.login(loginRequest);
+        debugPrint(
+          'Login response received: ${loginResponse.success} - ${loginResponse.message}',
+        );
+
+        if (loginResponse.success) {
+          _user = loginResponse;
+          _isLoggedIn = true;
+          debugPrint('User logged in successfully');
+
+          // Set the token in AuthService
+          if (loginResponse.token != null) {
+            await _authService.setAuthToken(loginResponse.token!);
+            debugPrint('Token set in AuthService');
+          }
+
+          // Now generate initial cards with valid authentication
+          try {
+            debugPrint('Generating initial cards for new user...');
+            final cardsResponse = await _cardService.generateInitialCards();
+            if (cardsResponse.success) {
+              debugPrint('Successfully generated cards for all currencies');
+              debugPrint('Generated cards: ${cardsResponse.data.length}');
+              for (var card in cardsResponse.data) {
+                debugPrint(
+                  'Generated card: ${card.currency} - ${card.maskedNumber}',
+                );
+              }
+            } else {
+              debugPrint('Failed to generate cards: ${cardsResponse.message}');
+              _setError('Failed to generate cards: ${cardsResponse.message}');
+              // Don't fail the signup process, but notify the user
+            }
+          } catch (e) {
+            debugPrint('Error generating initial cards: $e');
+            _setError('Error generating cards: $e');
+            // Don't fail the signup if card generation fails
+            // The user can retry card generation later
+          }
+        } else {
+          debugPrint(
+            'Failed to log in after confirmation: ${loginResponse.message}',
+          );
+          _setError(
+            'Failed to log in after confirmation: ${loginResponse.message}',
+          );
+          return false;
+        }
+
+        notifyListeners();
+        return true;
+      } else {
+        debugPrint('Confirmation failed: ${response.message}');
+        _setError(response.message);
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Error in confirmSignUp: $e');
+      // Extract just the error message, not the full exception
+      String errorMessage = 'An error occurred. Please try again.';
+      String errorString = e.toString();
+
+      if (errorString.startsWith('Exception: ')) {
+        errorMessage = errorString.substring(11); // Remove "Exception: " prefix
+      } else {
+        errorMessage = errorString;
+      }
+
+      // Remove quotes if present
+      if (errorMessage.startsWith('"') && errorMessage.endsWith('"')) {
+        errorMessage = errorMessage.substring(1, errorMessage.length - 1);
+      }
+
+      _setError(errorMessage);
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Check Email Verification
+  Future<void> checkEmailVerification() async {
+    _setLoading(true);
+    _clearError();
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+      _isEmailVerified = true;
+      notifyListeners();
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Resend Verification Email
+  Future<void> resendVerificationEmail() async {
+    _setLoading(true);
+    _clearError();
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Logout (handles all sign-out logic)
+  Future<void> logout() async {
+    _setLoading(true);
+    try {
+      await _authService.logout();
+      // Clear all state
+      _user = null;
+      _firstName = null;
+      _lastName = null;
+      _isLoggedIn = false;
+      _isEmailVerified = false;
+      _lastEmail = null;
+      _lastPassword = null;
+
+      // Clear from SharedPreferences
+      await _prefs.remove(_firstNameKey);
+      await _prefs.remove(_lastNameKey);
+      debugPrint('AuthController: Cleared all auth state');
+
+      notifyListeners();
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      // Show loading for a short period, then hide
+      Future.delayed(const Duration(seconds: 1), () {
+        _setLoading(false);
+      });
+    }
+  }
+
+  // Reset Password
+  Future<bool> resetPassword(String email) async {
+    _setLoading(true);
+    _clearError();
+    try {
+      final response = await _authService.forgotPassword(email: email);
+
+      if (response.success) {
+        _lastEmail = email;
+        debugPrint('Password reset email sent successfully');
+        return true;
+      } else {
+        _setError(response.message);
+        return false;
+      }
+    } catch (e) {
+      // Extract just the error message, not the full exception
+      String errorMessage = 'An error occurred. Please try again.';
+      String errorString = e.toString();
+
+      if (errorString.startsWith('Exception: ')) {
+        errorMessage = errorString.substring(11); // Remove "Exception: " prefix
+      } else {
+        errorMessage = errorString;
+      }
+
+      // Remove quotes if present
+      if (errorMessage.startsWith('"') && errorMessage.endsWith('"')) {
+        errorMessage = errorMessage.substring(1, errorMessage.length - 1);
+      }
+
+      _setError(errorMessage);
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Validate Reset Code
+  Future<bool> validateResetCode(String email, String code) async {
+    _setLoading(true);
+    _clearError();
+    try {
+      // We'll use a temporary password to validate the code
+      // This is a workaround since there's no separate validation endpoint
+      final response = await _authService.confirmForgotPassword(
+        email: email,
+        code: code,
+        password: 'temp_validation_123!@#',
+      );
+
+      if (response.success) {
+        debugPrint('Code validation successful');
+        return true;
+      } else {
+        _setError(response.message);
+        return false;
+      }
+    } catch (e) {
+      // Extract just the error message, not the full exception
+      String errorMessage = 'An error occurred. Please try again.';
+      String errorString = e.toString();
+
+      if (errorString.startsWith('Exception: ')) {
+        errorMessage = errorString.substring(11); // Remove "Exception: " prefix
+      } else {
+        errorMessage = errorString;
+      }
+
+      // Remove quotes if present
+      if (errorMessage.startsWith('"') && errorMessage.endsWith('"')) {
+        errorMessage = errorMessage.substring(1, errorMessage.length - 1);
+      }
+
+      _setError(errorMessage);
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Confirm Forgot Password
+  Future<bool> confirmForgotPassword({
+    required String email,
+    required String code,
+    required String password,
+  }) async {
+    _setLoading(true);
+    _clearError();
+    try {
+      final response = await _authService.confirmForgotPassword(
+        email: email,
+        code: code,
+        password: password,
+      );
+
+      if (response.success) {
+        debugPrint('Password reset successful');
+        return true;
+      } else {
+        _setError(response.message);
+        return false;
+      }
+    } catch (e) {
+      // Extract just the error message, not the full exception
+      String errorMessage = 'An error occurred. Please try again.';
+      String errorString = e.toString();
+
+      if (errorString.startsWith('Exception: ')) {
+        errorMessage = errorString.substring(11); // Remove "Exception: " prefix
+      } else {
+        errorMessage = errorString;
+      }
+
+      // Remove quotes if present
+      if (errorMessage.startsWith('"') && errorMessage.endsWith('"')) {
+        errorMessage = errorMessage.substring(1, errorMessage.length - 1);
+      }
+
+      _setError(errorMessage);
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Helper methods
+  void _setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+
+  void _setError(String? value) {
+    _error = value;
+    notifyListeners();
+  }
+
+  void _clearError() {
+    _error = null;
+  }
+}
+
+extension StringExtension on String {
+  String capitalize() {
+    if (isEmpty) return '';
+    return "${this[0].toUpperCase()}${substring(1).toLowerCase()}";
   }
 }

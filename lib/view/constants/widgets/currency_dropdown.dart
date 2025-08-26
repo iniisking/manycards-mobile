@@ -3,11 +3,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:manycards/gen/assets.gen.dart';
 
 class CurrencyDropdown extends StatefulWidget {
-  final String initialValue;
-  final Function(String) onCurrencyChanged;
+  final String? initialValue;
+  final void Function(String?) onCurrencyChanged;
   final Color backgroundColor;
   final Color shadowColor;
   final List<CurrencyOption>? customCurrencies;
+  final String? excludeCurrency;
 
   const CurrencyDropdown({
     super.key,
@@ -16,6 +17,7 @@ class CurrencyDropdown extends StatefulWidget {
     this.backgroundColor = Colors.white,
     this.shadowColor = Colors.black,
     this.customCurrencies,
+    this.excludeCurrency,
   });
 
   @override
@@ -23,7 +25,7 @@ class CurrencyDropdown extends StatefulWidget {
 }
 
 class _CurrencyDropdownState extends State<CurrencyDropdown> {
-  late String selectedCurrency;
+  late String? selectedCurrency;
 
   @override
   void initState() {
@@ -32,8 +34,48 @@ class _CurrencyDropdownState extends State<CurrencyDropdown> {
   }
 
   @override
+  void didUpdateWidget(covariant CurrencyDropdown oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Recompute filteredCurrencies
+    final currencies = widget.customCurrencies ?? [
+      CurrencyOption(
+        value: 'NGN',
+        flagAsset: Assets.images.nigerianFlag.image(
+          height: 20.h,
+          width: 20.w,
+        ),
+        label: 'NGN',
+      ),
+      CurrencyOption(
+        value: 'USD',
+        flagAsset: Assets.images.usFlag.image(height: 20.h, width: 20.w),
+        label: 'USD',
+      ),
+      CurrencyOption(
+        value: 'GBP',
+        flagAsset: Assets.images.ukFlag.image(height: 20.h, width: 20.w),
+        label: 'GBP',
+      ),
+    ];
+    final filteredCurrencies = widget.excludeCurrency == null
+        ? currencies
+        : currencies.where((c) => c.value != widget.excludeCurrency).toList();
+    // If initialValue changed or is not in filteredCurrencies, update selectedCurrency
+    if (widget.initialValue != oldWidget.initialValue ||
+        selectedCurrency == null ||
+        !filteredCurrencies.any((c) => c.value == selectedCurrency)) {
+      if (filteredCurrencies.any((c) => c.value == widget.initialValue)) {
+        selectedCurrency = widget.initialValue;
+      } else if (filteredCurrencies.isNotEmpty) {
+        selectedCurrency = filteredCurrencies.first.value;
+      } else {
+        selectedCurrency = null;
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Default currencies if custom currencies are not provided
     final currencies =
         widget.customCurrencies ??
         [
@@ -57,6 +99,21 @@ class _CurrencyDropdownState extends State<CurrencyDropdown> {
           ),
         ];
 
+    final filteredCurrencies =
+        widget.excludeCurrency == null
+            ? currencies
+            : currencies
+                .where((c) => c.value != widget.excludeCurrency)
+                .toList();
+
+    // Ensure selectedCurrency is always valid
+    if (selectedCurrency == null ||
+        !filteredCurrencies.any((c) => c.value == selectedCurrency)) {
+      selectedCurrency = filteredCurrencies.isNotEmpty
+          ? filteredCurrencies.first.value
+          : null;
+    }
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
       decoration: BoxDecoration(
@@ -76,8 +133,8 @@ class _CurrencyDropdownState extends State<CurrencyDropdown> {
           value: selectedCurrency,
           icon: Icon(Icons.keyboard_arrow_down, size: 18.sp),
           isDense: true,
-          items:
-              currencies.map((currency) {
+          items: filteredCurrencies
+              .map((currency) {
                 return DropdownMenuItem<String>(
                   value: currency.value,
                   child: Row(
@@ -95,7 +152,8 @@ class _CurrencyDropdownState extends State<CurrencyDropdown> {
                     ],
                   ),
                 );
-              }).toList(),
+              })
+              .toList(),
           onChanged: (value) {
             if (value != null) {
               setState(() {

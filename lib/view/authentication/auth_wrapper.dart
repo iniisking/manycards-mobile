@@ -7,8 +7,23 @@ import 'package:manycards/view/authentication/verify_email.dart';
 import 'package:manycards/view/bottom%20nav%20bar/main_screen.dart';
 import 'package:provider/provider.dart';
 
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  @override
+  void initState() {
+    super.initState();
+    // Initialize auth state when the widget is created
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authController = context.read<AuthController>();
+      authController.initializeAuthState();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,13 +31,40 @@ class AuthWrapper extends StatelessWidget {
 
     // Debug print
     debugPrint(
-      'AuthWrapper rebuild: isLoggedIn=${authController.isLoggedIn}, user=${authController.user?.email}, isEmailVerified=${authController.isEmailVerified}',
+      'AuthWrapper rebuild: isLoggedIn=${authController.isLoggedIn}, user=${authController.authService.email}, isEmailVerified=${authController.isEmailVerified}',
     );
 
     // Show loading indicator while initializing
     if (authController.isLoading) {
       debugPrint('AuthWrapper: Showing loading indicator');
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      String loadingMessage = 'Loading...';
+      // You can add more logic here to personalize the message
+      if (authController.error == null) {
+        if (authController.isLoggedIn == false && authController.user == null) {
+          loadingMessage = 'Logging in...';
+        } else if (authController.isLoggedIn == false && authController.user != null) {
+          loadingMessage = 'Logging out...';
+        } else {
+          loadingMessage = 'Loading...';
+        }
+      } else {
+        loadingMessage = 'Loading...';
+      }
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                loadingMessage,
+                style: const TextStyle(fontSize: 16, color: Colors.black54),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     // Redirect based on auth state
