@@ -32,7 +32,7 @@ ManyCards is a production-ready Flutter app that brings a seamless digital walle
 - **Transactions**: Full history with clear UX
 - **Currency Conversion**: Up-to-date conversion and totals
 - **Top-Up via Paystack**: Embedded WebView flow
-- **Auth & Security**: JWT, secure storage, optional biometrics
+- **Auth & Security**: JWT, secure storage, optional biometricsrel
 - **Responsive UI**: Modern design with dark theme support
 
 ## Architecture

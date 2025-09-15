@@ -162,7 +162,7 @@ class MyApp extends StatelessWidget {
                   cardController ??
                   CardController(currencyController, cardService),
         ),
-        
+
         //subcard controller
         ChangeNotifierProxyProvider2<
           SubcardService,
@@ -183,11 +183,10 @@ class MyApp extends StatelessWidget {
         //transaction controller
         ChangeNotifierProvider<TransactionController>(
           create:
-              (context) => TransactionController(
-                context.read<TransactionService>(),
-              ),
+              (context) =>
+                  TransactionController(context.read<TransactionService>()),
         ),
-        
+
         // Add NavigationController
         ChangeNotifierProvider(create: (_) => NavigationController()),
       ],
